@@ -16,8 +16,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 const RegisterPage = () => {
+	const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async(e: React.FormEvent<HTMLFormElement>) => {
@@ -30,14 +32,18 @@ const RegisterPage = () => {
     console.log(user);
 
 const { data, error } = await authClient.signUp.email({
-...user
+...user,
+
 });
 if(data){
 	console.log(data)
 }
 if(error){
 	console.log(error)
+
 }
+router.push("/signIn")
+
   };
 
   return (

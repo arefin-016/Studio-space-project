@@ -1,12 +1,21 @@
 "use client"
-
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useSyncExternalStore, useState } from "react"
 import { useTheme } from "next-themes"
 import { Aperture, Menu, Moon, Sun, User, X } from "lucide-react"
 import { cn } from "cn"
-import { buttonVariants } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { authClient } from "@/lib/auth-client";
+import Image from "next/image";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -37,6 +46,12 @@ const authPillClasses = cn(
 )
 
 export function Navbar() {
+
+	const { data: session } = authClient.useSession();
+
+const user=session?.user;
+
+
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const { resolvedTheme, setTheme } = useTheme()
@@ -108,30 +123,63 @@ export function Navbar() {
             )}
           </button>
 
-          <Link
-            href="/sign-in"
-            className={cn(
-              authLinkClasses,
-              "hidden text-[13px] font-semibold tracking-[0.16em] whitespace-nowrap uppercase lg:inline-block"
-            )}
-          >
-            Sign In
-          </Link>
+          {!user ? (
+  <>
+    <Link
+      href="/signIn"
+      onClick={() => setOpen(false)}
+      className={cn(
+        authLinkClasses,
+        "text-sm font-semibold tracking-[0.12em] uppercase"
+      )}
+    >
+      Sign In
+    </Link>
 
-          <Link
-            href="/sign-up"
-            className={cn(authPillClasses, "hidden text-[13px] lg:inline-flex")}
-          >
-            Sign Up
-          </Link>
+    <Link
+      href="/signUp"
+      onClick={() => setOpen(false)}
+      className={cn(
+        authPillClasses,
+        "self-start text-sm tracking-[0.12em]"
+      )}
+    >
+      Sign Up
+    </Link>
+  </>
+) : (
+  <Popover>
+ <PopoverTrigger
+  render={
+    <Button
+      variant="outline"
+      className="h-10 w-10 rounded-full overflow-hidden p-0"
+    />
+  }
+>
+  {user?.image ? (
+    <Image
+      src={user.image}
+      alt="Profile"
+      width={40}
+      height={40}
+      className="h-full w-full rounded-full object-cover"
+    />
+  ) : (
+    <User size={20} />
+  )}
+</PopoverTrigger>
+  <PopoverContent>
+    <PopoverHeader>
+      <PopoverTitle>{user.email}</PopoverTitle>
+      <PopoverDescription>{user.name}</PopoverDescription>
+	  <Button variant={"outline"} onClick={async()=>{await authClient.signOut();}}>Sign Out</Button>
+    </PopoverHeader>
+  </PopoverContent>
+</Popover>
+)}
 
-          <Link
-            href="/profile"
-            aria-label="Profile"
-            className={cn(iconButtonClasses, "hidden lg:flex")}
-          >
-            <User className="size-4" aria-hidden="true" />
-          </Link>
+
 
           {/* Mobile menu toggle */}
           <button
@@ -187,37 +235,63 @@ export function Navbar() {
               )
             })}
             <div className="mt-3 flex flex-col gap-3 border-t border-black/10 px-2 pt-4 dark:border-white/10">
-              <Link
-                href="/sign-in"
-                onClick={() => setOpen(false)}
-                className={cn(
-                  authLinkClasses,
-                  "text-sm font-semibold tracking-[0.12em] uppercase"
-                )}
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/sign-up"
-                onClick={() => setOpen(false)}
-                className={cn(
-                  authPillClasses,
-                  "self-start text-sm tracking-[0.12em]"
-                )}
-              >
-                Sign Up
-              </Link>
-              <Link
-                href="/profile"
-                onClick={() => setOpen(false)}
-                className={cn(
-                  authLinkClasses,
-                  "flex items-center gap-2 py-1 text-sm font-semibold tracking-[0.12em] uppercase"
-                )}
-              >
-                <User className="size-4" aria-hidden="true" />
-                Profile
-              </Link>
+
+
+			{!user ? (
+  <>
+    <Link
+      href="/signIn"
+      onClick={() => setOpen(false)}
+      className={cn(
+        authLinkClasses,
+        "text-sm font-semibold tracking-[0.12em] uppercase"
+      )}
+    >
+      Sign In
+    </Link>
+
+    <Link
+      href="/signUp"
+      onClick={() => setOpen(false)}
+      className={cn(
+        authPillClasses,
+        "self-start text-sm tracking-[0.12em]"
+      )}
+    >
+      Sign Up
+    </Link>
+  </>
+) : (
+  <Popover>
+  <PopoverTrigger
+  render={
+    <Button
+      variant="outline"
+      className="h-10 w-10 rounded-full overflow-hidden p-0"
+    />
+  }
+>
+  {user?.image ? (
+    <Image
+      src={user.image}
+      alt="Profile"
+      width={40}
+      height={40}
+      className="h-full w-full rounded-full object-cover"
+    />
+  ) : (
+    <User size={20} />
+  )}
+</PopoverTrigger>
+  <PopoverContent>
+    <PopoverHeader>
+      <PopoverTitle>{user.email}</PopoverTitle>
+      <PopoverDescription>{user.name}</PopoverDescription>
+	    <Button onClick={async()=>{await authClient.signOut();}}>Sign Out</Button>
+    </PopoverHeader>
+  </PopoverContent>
+</Popover>
+)}
             </div>
           </nav>
         </div>
