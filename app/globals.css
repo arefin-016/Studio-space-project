@@ -8,6 +8,8 @@
     --font-heading: var(--font-sans);
     --font-sans: var(--font-sans);
     --color-sand: #c9b095;
+    --color-sand-deep: #8a6a45;
+    --color-cream: #faf6f0;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,6 +51,7 @@
 }
 
 :root {
+    color-scheme: light;
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -84,6 +87,7 @@
 }
 
 .dark {
+    color-scheme: dark;
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.205 0 0);
@@ -129,19 +133,26 @@
     }
 }
 
-/* Hero slider pagination (Swiper) */
+/* Hero slider pagination (Swiper) — light theme base, dark theme overrides */
 .hero-slider .swiper-pagination {
   bottom: 2rem;
 }
 .hero-slider .swiper-pagination-bullet {
   width: 9px;
   height: 9px;
+  background: #17130e;
+  opacity: 0.35;
+}
+.hero-slider .swiper-pagination-bullet-active {
+  background: #8a6a45;
+  opacity: 1;
+}
+.dark .hero-slider .swiper-pagination-bullet {
   background: #fff;
   opacity: 0.4;
 }
-.hero-slider .swiper-pagination-bullet-active {
+.dark .hero-slider .swiper-pagination-bullet-active {
   background: #c9b095;
-  opacity: 1;
 }
 
 /* Hero slider — subtle content reveal when a slide becomes active */

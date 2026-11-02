@@ -53,7 +53,10 @@ export function Navbar() {
           className="flex shrink-0 items-center gap-2.5 lg:justify-self-start"
           onClick={() => setOpen(false)}
         >
-          <Aperture className="size-7 text-sand" aria-hidden="true" />
+          <Aperture
+            className="size-7 text-sand-deep dark:text-sand"
+            aria-hidden="true"
+          />
           <span className="text-2xl font-black tracking-tight text-neutral-900 dark:text-white">
             StudioSpace
           </span>
@@ -81,7 +84,7 @@ export function Navbar() {
                 {link.label}
                 {active && (
                   <span
-                    className="size-1.5 rounded-full bg-sand"
+                    className="size-1.5 rounded-full bg-sand-deep dark:bg-sand"
                     aria-hidden="true"
                   />
                 )}
@@ -176,7 +179,7 @@ export function Navbar() {
                   {link.label}
                   {active && (
                     <span
-                      className="size-1.5 rounded-full bg-sand"
+                      className="size-1.5 rounded-full bg-sand-deep dark:bg-sand"
                       aria-hidden="true"
                     />
                   )}

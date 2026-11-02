@@ -27,7 +27,7 @@ Verify with: `npm run format` → `npm run lint` → `npm run typecheck` → `np
 - `cn` is the standalone `cn` package: `import { cn } from "cn"` (clsx + tailwind-merge drop-in; `@/lib/utils` re-exports it). Prettier's Tailwind plugin sorts classes inside `cn(...)`/`cva(...)` (`tailwindFunctions` in `.prettierrc`).
 - Add UI primitives with `npx shadcn@latest add <component>` (lucide icon library).
 - Prettier style: no semicolons, double quotes, 2-space indent, LF — run `npm run format` before committing.
-- Dark mode: next-themes with `class` attribute; the `d` key toggles theme via a custom hotkey in `components/theme-provider.tsx` (ignored while typing in inputs).
+- Dark mode: next-themes with `class` attribute; the `d` key toggles theme via a custom hotkey in `components/theme-provider.tsx` (ignored while typing in inputs). Convention: light is the base style, dark via `dark:` variants — `components/navbar.tsx` and `components/home/HeroSlider.tsx` are theme-aware (white wash / dark scrim), and light-theme accents use `--color-sand-deep` instead of `--color-sand`.
 
 ## Structure
 
