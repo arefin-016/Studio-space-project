@@ -296,9 +296,21 @@ const AddStudioPage = () => {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Could not publish the studio.");
+      const result = await res.json().catch(() => null);
 
-      await res.json();
+      // 409 = this email already has a studio (sent by the backend)
+      if (res.status === 409) {
+        toast.error("Studio already added", {
+          description:
+            result?.message ??
+            "You have already listed a studio with this email.",
+        });
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error(result?.message ?? "Could not publish the studio.");
+      }
 
       toast.success("Studio published!", {
         description: "Your studio was submitted successfully.",
@@ -311,8 +323,11 @@ const AddStudioPage = () => {
       setImageFailed(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
+      // fetch() throws a TypeError when the server can't be reached at all
       toast.error(
-        err instanceof Error
+        err instanceof TypeError
+          ? "Can't reach the server. Make sure your backend is running."
+          : err instanceof Error
           ? err.message
           : "Something went wrong. Please try again."
       );

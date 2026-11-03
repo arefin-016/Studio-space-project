@@ -12,7 +12,7 @@ import PopOver from "./shared/PopOver"
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/studios", label: "Explore Studios" },
+  { href: "/studioes", label: "Explore Studios" },
   { href: "/how-it-works", label: "How It Works" },
   { href: "/about", label: "About Us" },
 ]
@@ -28,10 +28,10 @@ function useMounted() {
 
 // Circular icon buttons (theme toggle, hamburger)
 const iconButtonClasses =
-  "flex size-10 shrink-0 items-center justify-center rounded-full border border-black/15 text-neutral-800 transition-colors hover:bg-black/5 dark:border-white/25 dark:text-white dark:hover:bg-white/10"
+  "flex size-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white/50 text-neutral-800 transition-colors hover:bg-black/10 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
 
 const authLinkClasses =
-  "text-neutral-600 transition-colors hover:text-neutral-900 dark:text-white/85 dark:hover:text-white"
+  "text-neutral-700 transition-colors hover:text-neutral-900 dark:text-white/85 dark:hover:text-white"
 
 // Sign Up pill (a little tighter at lg so it never collides with the centered links)
 const authPillClasses = cn(
@@ -82,11 +82,10 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 border-b border-black/10 backdrop-blur-md dark:border-transparent",
+        "fixed inset-x-0 top-0 z-50 border-b backdrop-blur-md transition-colors duration-300",
         open
-          ? // solid background while the mobile menu is open, so header + menu read as one panel
-            "bg-white dark:border-white/10 dark:bg-[#0b0b10]"
-          : "bg-white/70 dark:bg-transparent dark:bg-gradient-to-b dark:from-black/70 dark:via-black/30 dark:to-transparent"
+          ? "border-black/10 bg-white dark:border-white/10 dark:bg-[#0b0b10]"
+          : "border-black/5 bg-white/60 dark:border-white/10 dark:bg-black/40 dark:bg-gradient-to-b dark:from-black/80 dark:via-black/40 dark:to-transparent"
       )}
     >
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-8">
@@ -105,7 +104,7 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Middle — links (dead-centered by the 1fr auto 1fr grid) */}
+        {/* Middle — links */}
         <nav
           aria-label="Main"
           className="hidden items-center gap-5 lg:flex lg:justify-self-center xl:gap-10"
@@ -121,7 +120,7 @@ export function Navbar() {
                   "flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap uppercase transition-colors xl:text-[13px]",
                   active
                     ? "text-neutral-900 dark:text-sand"
-                    : "text-neutral-600 hover:text-neutral-900 dark:text-white/85 dark:hover:text-white"
+                    : "text-neutral-600 hover:text-neutral-900 dark:text-white/80 dark:hover:text-white"
                 )}
               >
                 {link.label}
@@ -136,7 +135,7 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Right — theme mode, sign in / sign up / profile, mobile hamburger */}
+        {/* Right — actions */}
         <div className="flex items-center gap-2 sm:gap-4 lg:gap-4 lg:justify-self-end xl:gap-5">
           <button
             type="button"
@@ -152,7 +151,6 @@ export function Navbar() {
           </button>
 
           {!user ? (
-            // Phones: these live inside the mobile menu. sm and up: shown in the bar.
             <div className="hidden items-center gap-4 sm:flex lg:gap-4 xl:gap-5">
               <Link
                 href="/signIn"
@@ -172,7 +170,6 @@ export function Navbar() {
               </Link>
             </div>
           ) : (
-            // Logged in: the avatar stays in the bar at every screen size
             <PopOver />
           )}
 
@@ -230,7 +227,6 @@ export function Navbar() {
               )
             })}
 
-            {/* Sign In / Sign Up only on phones (sm and up they are in the bar) */}
             {!user && (
               <div className="mt-3 flex gap-3 border-t border-black/10 px-2 pt-4 sm:hidden dark:border-white/10">
                 <Link
