@@ -1,21 +1,14 @@
 "use client"
-import {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { useSyncExternalStore, useState } from "react"
+import { usePathname } from "next/navigation"
+import { useSyncExternalStore, useState, useEffect } from "react"
 import { useTheme } from "next-themes"
-import { Aperture, Menu, Moon, Sun, User, X } from "lucide-react"
+import { Aperture, Menu, Moon, Sun, X } from "lucide-react"
 import { cn } from "cn"
-import { Button, buttonVariants } from "@/components/ui/button"
-import { authClient } from "@/lib/auth-client";
-import Image from "next/image";
+import { buttonVariants } from "@/components/ui/button"
+import { authClient } from "@/lib/auth-client"
+import PopOver from "./shared/PopOver"
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -33,24 +26,26 @@ function useMounted() {
   return useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot)
 }
 
-// Circular icon buttons (theme toggle, profile, hamburger)
+// Circular icon buttons (theme toggle, hamburger)
 const iconButtonClasses =
-  "flex size-10 items-center justify-center rounded-full border border-black/15 text-neutral-800 transition-colors hover:bg-black/5 dark:border-white/25 dark:text-white dark:hover:bg-white/10"
+  "flex size-10 shrink-0 items-center justify-center rounded-full border border-black/15 text-neutral-800 transition-colors hover:bg-black/5 dark:border-white/25 dark:text-white dark:hover:bg-white/10"
 
 const authLinkClasses =
   "text-neutral-600 transition-colors hover:text-neutral-900 dark:text-white/85 dark:hover:text-white"
 
+// Sign Up pill (a little tighter at lg so it never collides with the centered links)
 const authPillClasses = cn(
   buttonVariants({ size: "lg" }),
-  "h-10 rounded-full bg-sand px-7 font-bold tracking-[0.12em] whitespace-nowrap text-[#17130e] uppercase hover:bg-sand/90"
+  "h-10 rounded-full bg-sand px-5 font-bold tracking-[0.12em] whitespace-nowrap text-[#17130e] uppercase hover:bg-sand/90 xl:px-7"
 )
 
+// Outlined pill used for "Sign In" inside the mobile menu
+const authOutlinePillClasses =
+  "inline-flex h-11 flex-1 items-center justify-center rounded-full border border-black/20 text-sm font-semibold tracking-[0.12em] whitespace-nowrap text-neutral-800 uppercase transition-colors hover:bg-black/5 dark:border-white/25 dark:text-white dark:hover:bg-white/10"
+
 export function Navbar() {
-
-	const { data: session } = authClient.useSession();
-
-const user=session?.user;
-
+  const { data: session } = authClient.useSession()
+  const user = session?.user
 
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -59,20 +54,53 @@ const user=session?.user;
   const isDark = mounted && resolvedTheme === "dark"
   const toggleTheme = () => setTheme(isDark ? "light" : "dark")
 
+  // Close the mobile menu on Escape, and when the screen grows to desktop size
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false)
+    }
+    const mq = window.matchMedia("(min-width: 1024px)")
+    const onChange = (e: MediaQueryListEvent) => {
+      if (e.matches) setOpen(false)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    mq.addEventListener("change", onChange)
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      mq.removeEventListener("change", onChange)
+    }
+  }, [])
+
+  // Stop the page behind the menu from scrolling while it is open
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : ""
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [open])
+
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-black/10 bg-white/70 backdrop-blur-md dark:border-transparent dark:bg-transparent dark:bg-gradient-to-b dark:from-black/70 dark:via-black/30 dark:to-transparent">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-8">
+    <header
+      className={cn(
+        "fixed inset-x-0 top-0 z-50 border-b border-black/10 backdrop-blur-md dark:border-transparent",
+        open
+          ? // solid background while the mobile menu is open, so header + menu read as one panel
+            "bg-white dark:border-white/10 dark:bg-[#0b0b10]"
+          : "bg-white/70 dark:bg-transparent dark:bg-gradient-to-b dark:from-black/70 dark:via-black/30 dark:to-transparent"
+      )}
+    >
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:px-8">
         {/* Left — logo */}
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2.5 lg:justify-self-start"
+          className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-2.5 lg:justify-self-start"
           onClick={() => setOpen(false)}
         >
           <Aperture
-            className="size-7 text-sand-deep dark:text-sand"
+            className="size-6 text-sand-deep sm:size-7 dark:text-sand"
             aria-hidden="true"
           />
-          <span className="text-2xl font-black tracking-tight text-neutral-900 dark:text-white">
+          <span className="text-xl font-black tracking-tight text-neutral-900 sm:text-2xl dark:text-white">
             StudioSpace
           </span>
         </Link>
@@ -80,7 +108,7 @@ const user=session?.user;
         {/* Middle — links (dead-centered by the 1fr auto 1fr grid) */}
         <nav
           aria-label="Main"
-          className="hidden items-center gap-8 lg:flex lg:justify-self-center xl:gap-10"
+          className="hidden items-center gap-5 lg:flex lg:justify-self-center xl:gap-10"
         >
           {navLinks.map((link) => {
             const active = pathname === link.href
@@ -90,7 +118,7 @@ const user=session?.user;
                 href={link.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-1.5 text-[13px] font-semibold whitespace-nowrap uppercase transition-colors",
+                  "flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap uppercase transition-colors xl:text-[13px]",
                   active
                     ? "text-neutral-900 dark:text-sand"
                     : "text-neutral-600 hover:text-neutral-900 dark:text-white/85 dark:hover:text-white"
@@ -108,8 +136,8 @@ const user=session?.user;
           })}
         </nav>
 
-        {/* Right — theme mode, sign in, sign up, profile (+ mobile hamburger) */}
-        <div className="flex items-center gap-4 lg:gap-5 lg:justify-self-end">
+        {/* Right — theme mode, sign in / sign up / profile, mobile hamburger */}
+        <div className="flex items-center gap-2 sm:gap-4 lg:gap-4 lg:justify-self-end xl:gap-5">
           <button
             type="button"
             onClick={toggleTheme}
@@ -124,62 +152,29 @@ const user=session?.user;
           </button>
 
           {!user ? (
-  <>
-    <Link
-      href="/signIn"
-      onClick={() => setOpen(false)}
-      className={cn(
-        authLinkClasses,
-        "text-sm font-semibold tracking-[0.12em] uppercase"
-      )}
-    >
-      Sign In
-    </Link>
+            // Phones: these live inside the mobile menu. sm and up: shown in the bar.
+            <div className="hidden items-center gap-4 sm:flex lg:gap-4 xl:gap-5">
+              <Link
+                href="/signIn"
+                className={cn(
+                  authLinkClasses,
+                  "text-sm font-semibold tracking-[0.12em] whitespace-nowrap uppercase"
+                )}
+              >
+                Sign In
+              </Link>
 
-    <Link
-      href="/signUp"
-      onClick={() => setOpen(false)}
-      className={cn(
-        authPillClasses,
-        "self-start text-sm tracking-[0.12em]"
-      )}
-    >
-      Sign Up
-    </Link>
-  </>
-) : (
-  <Popover>
- <PopoverTrigger
-  render={
-    <Button
-      variant="outline"
-      className="h-10 w-10 rounded-full overflow-hidden p-0"
-    />
-  }
->
-  {user?.image ? (
-    <Image
-      src={user.image}
-      alt="Profile"
-      width={40}
-      height={40}
-      className="h-full w-full rounded-full object-cover"
-    />
-  ) : (
-    <User size={20} />
-  )}
-</PopoverTrigger>
-  <PopoverContent>
-    <PopoverHeader>
-      <PopoverTitle>{user.email}</PopoverTitle>
-      <PopoverDescription>{user.name}</PopoverDescription>
-	  <Button variant={"outline"} onClick={async()=>{await authClient.signOut();}}>Sign Out</Button>
-    </PopoverHeader>
-  </PopoverContent>
-</Popover>
-)}
-
-
+              <Link
+                href="/signUp"
+                className={cn(authPillClasses, "text-sm tracking-[0.12em]")}
+              >
+                Sign Up
+              </Link>
+            </div>
+          ) : (
+            // Logged in: the avatar stays in the bar at every screen size
+            <PopOver />
+          )}
 
           {/* Mobile menu toggle */}
           <button
@@ -203,7 +198,7 @@ const user=session?.user;
       {open && (
         <div
           id="mobile-menu"
-          className="border-t border-black/10 bg-white/95 backdrop-blur-md lg:hidden dark:border-white/10 dark:bg-[#0b0b10]"
+          className="max-h-[calc(100dvh-5rem)] overflow-y-auto border-t border-black/10 bg-white backdrop-blur-md lg:hidden dark:border-white/10 dark:bg-[#0b0b10]"
         >
           <nav
             aria-label="Mobile"
@@ -218,7 +213,7 @@ const user=session?.user;
                   aria-current={active ? "page" : undefined}
                   onClick={() => setOpen(false)}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2 py-2.5 text-sm font-semibold tracking-[0.12em] uppercase transition-colors",
+                    "flex items-center gap-1.5 rounded-md px-2 py-3 text-sm font-semibold tracking-[0.12em] uppercase transition-colors",
                     active
                       ? "bg-neutral-100 text-neutral-900 dark:bg-white/5 dark:text-sand"
                       : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 dark:text-white/85 dark:hover:bg-white/5 dark:hover:text-white"
@@ -234,65 +229,30 @@ const user=session?.user;
                 </Link>
               )
             })}
-            <div className="mt-3 flex flex-col gap-3 border-t border-black/10 px-2 pt-4 dark:border-white/10">
 
+            {/* Sign In / Sign Up only on phones (sm and up they are in the bar) */}
+            {!user && (
+              <div className="mt-3 flex gap-3 border-t border-black/10 px-2 pt-4 sm:hidden dark:border-white/10">
+                <Link
+                  href="/signIn"
+                  onClick={() => setOpen(false)}
+                  className={authOutlinePillClasses}
+                >
+                  Sign In
+                </Link>
 
-			{!user ? (
-  <>
-    <Link
-      href="/signIn"
-      onClick={() => setOpen(false)}
-      className={cn(
-        authLinkClasses,
-        "text-sm font-semibold tracking-[0.12em] uppercase"
-      )}
-    >
-      Sign In
-    </Link>
-
-    <Link
-      href="/signUp"
-      onClick={() => setOpen(false)}
-      className={cn(
-        authPillClasses,
-        "self-start text-sm tracking-[0.12em]"
-      )}
-    >
-      Sign Up
-    </Link>
-  </>
-) : (
-  <Popover>
-  <PopoverTrigger
-  render={
-    <Button
-      variant="outline"
-      className="h-10 w-10 rounded-full overflow-hidden p-0"
-    />
-  }
->
-  {user?.image ? (
-    <Image
-      src={user.image}
-      alt="Profile"
-      width={40}
-      height={40}
-      className="h-full w-full rounded-full object-cover"
-    />
-  ) : (
-    <User size={20} />
-  )}
-</PopoverTrigger>
-  <PopoverContent>
-    <PopoverHeader>
-      <PopoverTitle>{user.email}</PopoverTitle>
-      <PopoverDescription>{user.name}</PopoverDescription>
-	    <Button onClick={async()=>{await authClient.signOut();}}>Sign Out</Button>
-    </PopoverHeader>
-  </PopoverContent>
-</Popover>
-)}
-            </div>
+                <Link
+                  href="/signUp"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    authPillClasses,
+                    "h-11 flex-1 px-4 text-sm tracking-[0.12em]"
+                  )}
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
           </nav>
         </div>
       )}

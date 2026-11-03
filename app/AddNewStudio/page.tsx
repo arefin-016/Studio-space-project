@@ -9,6 +9,8 @@ import {
   Users,
   Plus,
 } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
+
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,8 @@ const amenities = [
 ];
 
 const AddStudioPage = () => {
+	const {data:session}=authClient.useSession()
+	const user=session?.user
 	const handleSubmit=async(e)=>{
 e.preventDefault()
 const formData=new FormData(e.currentTarget)
@@ -286,7 +290,7 @@ console.log(dataJson)
 
                   <Input
                     name="ownerName"
-                    value="John Doe"
+                    value={user.name}
                     readOnly
                     className="h-11 bg-muted"
                   />
@@ -299,7 +303,7 @@ console.log(dataJson)
 
                   <Input
                     name="ownerEmail"
-                    value="john@example.com"
+                    value={user.email}
                     readOnly
                     className="h-11 bg-muted"
                   />
