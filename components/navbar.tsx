@@ -14,7 +14,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/studioes", label: "Explore Studios" },
   { href: "/#how-it-works", label: "How It Works" },
-  { href: "/about", label: "About Us" },
+  { href: "/#about-us", label: "About Us" },
 ]
 
 // Hydration-safe "has mounted" flag (no setState-in-effect, per repo lint rules)
