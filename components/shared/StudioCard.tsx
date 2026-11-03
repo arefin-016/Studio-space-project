@@ -112,7 +112,7 @@ const StudioCard = ({ studio }: { studio?: Studio }) => {
 
         {/* View Details — same tan pill as Sign Up */}
         <Link
-          href={`/studios/${_id}`}
+          href={`/studioes/${_id}`}
           className="mt-4 flex h-11 w-full items-center justify-center rounded-full bg-[#C9A98B] px-6 text-xs font-bold uppercase tracking-[0.18em] text-[#1a1410] transition hover:bg-[#D8BDA2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-black"
         >
           View Details

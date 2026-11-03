@@ -106,7 +106,7 @@ const AllStudio = async () => {
                     </div>
 
                     <Link
-                      href={`/studios/${studio._id}`}
+                      href={`/studioes/${studio._id}`}
                       className="flex items-center gap-2 rounded-lg bg-[#1a1410] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8a6a4d] dark:bg-[#C9A98B] dark:text-[#1a1410] dark:hover:bg-[#b8956c]"
                     >
                       View Details
