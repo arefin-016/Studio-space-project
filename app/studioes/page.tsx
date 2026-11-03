@@ -16,7 +16,7 @@ const API_URL = "http://localhost:8000";
 
 const getStudios = async (): Promise<Studio[]> => {
   try {
-    const res = await fetch(`${API_URL}/getStudio`, {
+    const res = await fetch(`${API_URL}/getStudios`, {
       cache: "no-store",
     });
 

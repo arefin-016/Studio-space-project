@@ -1,8 +1,9 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,8 +21,8 @@ import {
   X,
   User,
   MessageCircle,
-  CheckCircle2,
 } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
 
 interface Studio {
   _id: string;
@@ -58,12 +59,17 @@ const StudiosDetailsPage = ({
 }: {
   params: Promise<{ id: string }>;
 }) => {
+  // Hooks
   const { id } = use(params);
+  const router = useRouter();
+
+  const { data: session, isPending } = authClient.useSession();
 
   const [studio, setStudio] = useState<Studio | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [showBooking, setShowBooking] = useState(false);
+
   const [booking, setBooking] = useState({
     date: "",
     startTime: "",
@@ -83,7 +89,7 @@ const StudiosDetailsPage = ({
         const data = await res.json();
         setStudio(data);
       } catch (error) {
-        console.error(error);
+        console.error("Failed to fetch studio:", error);
       } finally {
         setLoading(false);
       }
@@ -92,12 +98,100 @@ const StudiosDetailsPage = ({
     getStudio();
   }, [id]);
 
+  // Gallery
+  const gallery = studio
+    ? [studio.image, ...(studio.images || [])].filter(Boolean)
+    : [];
+
+  // Reviews
+  const reviews = studio?.reviews || [];
+
+  // Amenities (array)
+  const amenities = studio?.amenities || [];
+
+  // Total Price
+  const totalPrice = studio
+    ? Number(studio.hourlyRate) * Number(booking.duration)
+    : 0;
+
+  // Gallery Navigation
+  const nextImage = () => {
+    if (gallery.length === 0) return;
+
+    setActiveImage((prev) => (prev + 1) % gallery.length);
+  };
+
+  const previousImage = () => {
+    if (gallery.length === 0) return;
+
+    setActiveImage(
+      (prev) => (prev - 1 + gallery.length) % gallery.length
+    );
+  };
+
+  // Book Now: Check Login
+  const handleBookNow = () => {
+    if (isPending) return;
+
+    if (!session?.user) {
+      router.push(
+        `/signIn?callbackURL=${encodeURIComponent(`/studios/${id}`)}`
+      );
+      return;
+    }
+
+    setShowBooking(true);
+  };
+
+  // Booking Submit
+  const handleBooking = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!session?.user) {
+      setShowBooking(false);
+
+      router.push(
+        `/signIn?callbackURL=${encodeURIComponent(`/studios/${id}`)}`
+      );
+
+      return;
+    }
+
+    if (!studio) return;
+
+    const bookingData = {
+      studioId: studio._id,
+      studioName: studio.name,
+      userEmail: session.user.email,
+      userName: session.user.name,
+      date: booking.date,
+      startTime: booking.startTime,
+      duration: Number(booking.duration),
+      totalPrice,
+    };
+
+    console.log("Booking Information:", bookingData);
+
+    // TODO: Send bookingData to your backend API.
+
+    alert("Booking details collected successfully!");
+
+    setShowBooking(false);
+
+    setBooking({
+      date: "",
+      startTime: "",
+      duration: "2",
+    });
+  };
+
   // Loading State
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#faf8f5] dark:bg-[#0e0b09]">
         <div className="text-center">
           <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[#C9A98B]/20 border-t-[#C9A98B]" />
+
           <p className="mt-4 text-sm font-semibold text-[#8a6a4d] dark:text-[#C9A98B]">
             Loading StudioSpace...
           </p>
@@ -111,12 +205,15 @@ const StudiosDetailsPage = ({
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#faf8f5] px-4 text-center dark:bg-[#0e0b09]">
         <Camera size={50} className="text-[#C9A98B]" />
+
         <h2 className="mt-5 text-2xl font-extrabold dark:text-white">
           Studio Not Found
         </h2>
+
         <p className="mt-2 text-sm text-gray-500">
           This workspace may have been removed.
         </p>
+
         <Link
           href="/studios"
           className="mt-6 rounded-xl bg-[#C9A98B] px-6 py-3 font-bold text-[#1a1410]"
@@ -126,43 +223,6 @@ const StudiosDetailsPage = ({
       </div>
     );
   }
-
-  const gallery = [studio.image, ...(studio.images || [])].filter(Boolean);
-  const reviews = studio.reviews || [];
-
-  const totalPrice =
-    Number(studio.hourlyRate) * Number(booking.duration);
-
-  const nextImage = () => {
-    setActiveImage((prev) => (prev + 1) % gallery.length);
-  };
-
-  const previousImage = () => {
-    setActiveImage(
-      (prev) => (prev - 1 + gallery.length) % gallery.length
-    );
-  };
-
-  // Booking Submit
-  const handleBooking = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    const bookingData = {
-      studioId: studio._id,
-      studioName: studio.name,
-      date: booking.date,
-      startTime: booking.startTime,
-      duration: Number(booking.duration),
-      totalPrice,
-    };
-
-    console.log("Booking Information:", bookingData);
-
-    // TODO: Send bookingData to your backend API.
-
-    alert("Booking details collected successfully!");
-    setShowBooking(false);
-  };
 
   return (
     <main className="min-h-screen bg-[#faf8f5] text-[#1a1410] dark:bg-[#0e0b09] dark:text-white">
@@ -182,6 +242,7 @@ const StudiosDetailsPage = ({
           <div>
             <div className="mb-3 flex items-center gap-3">
               <span className="h-px w-8 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
+
               <span className="text-xs font-bold uppercase tracking-[0.3em] text-[#8a6a4d] dark:text-[#C9A98B]">
                 {studio.category}
               </span>
@@ -202,9 +263,11 @@ const StudiosDetailsPage = ({
               size={19}
               className="fill-yellow-400 text-yellow-400"
             />
+
             <span className="font-bold">
               {studio.rating || "New"}
             </span>
+
             <span className="text-sm text-gray-500">
               ({reviews.length} reviews)
             </span>
@@ -273,7 +336,6 @@ const StudiosDetailsPage = ({
 
         {/* Main Content */}
         <div className="mt-12 grid gap-12 lg:grid-cols-3">
-
           <div className="space-y-12 lg:col-span-2">
 
             {/* Description */}
@@ -281,6 +343,7 @@ const StudiosDetailsPage = ({
               <h2 className="text-2xl font-extrabold uppercase">
                 About This Workspace
               </h2>
+
               <p className="mt-4 text-sm leading-8 text-gray-600 dark:text-gray-400">
                 {studio.description ||
                   "A beautiful creative workspace designed for professionals, creators, and artists. Enjoy a comfortable environment with everything you need for your next project."}
@@ -316,9 +379,11 @@ const StudiosDetailsPage = ({
                     className="rounded-xl border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1a1410]"
                   >
                     <item.icon className="mb-3 text-[#8a6a4d] dark:text-[#C9A98B]" />
+
                     <p className="text-xs text-gray-500">
                       {item.label}
                     </p>
+
                     <p className="mt-1 font-bold">
                       {item.value}
                     </p>
@@ -334,28 +399,28 @@ const StudiosDetailsPage = ({
               </h2>
 
               <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {(studio.amenities || []).map((amenity, index) => {
-                  const Icon =
-                    amenityIcons[index % amenityIcons.length];
+                {amenities.length > 0 ? (
+                  amenities.map((amenity, index) => {
+                    const Icon =
+                      amenityIcons[index % amenityIcons.length];
 
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 rounded-xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-[#1a1410]"
-                    >
-                      <Icon
-                        size={19}
-                        className="shrink-0 text-[#8a6a4d] dark:text-[#C9A98B]"
-                      />
-                      <span className="text-sm font-medium">
-                        {amenity}
-                      </span>
-                    </div>
-                  );
-                })}
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 rounded-xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-[#1a1410]"
+                      >
+                        <Icon
+                          size={19}
+                          className="shrink-0 text-[#8a6a4d] dark:text-[#C9A98B]"
+                        />
 
-                {(!studio.amenities ||
-                  studio.amenities.length === 0) && (
+                        <span className="text-sm font-medium">
+                          {amenity}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
                   <p className="text-sm text-gray-500">
                     No amenities listed yet.
                   </p>
@@ -388,6 +453,7 @@ const StudiosDetailsPage = ({
                   <p className="text-lg font-bold">
                     {studio.host?.name || "Studio Host"}
                   </p>
+
                   <p className="mt-1 text-sm text-gray-500">
                     Workspace Host
                   </p>
@@ -409,7 +475,10 @@ const StudiosDetailsPage = ({
                       className="rounded-2xl border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-[#1a1410]"
                     >
                       <div className="flex items-center justify-between">
-                        <p className="font-bold">{review.name}</p>
+                        <p className="font-bold">
+                          {review.name}
+                        </p>
+
                         <span className="flex items-center gap-1 text-sm font-bold">
                           <Star
                             size={14}
@@ -428,7 +497,11 @@ const StudiosDetailsPage = ({
               ) : (
                 <div className="mt-5 rounded-xl border border-dashed border-black/20 p-8 text-center dark:border-white/15">
                   <MessageCircle className="mx-auto mb-3 text-[#C9A98B]" />
-                  <p className="font-bold">No reviews yet</p>
+
+                  <p className="font-bold">
+                    No reviews yet
+                  </p>
+
                   <p className="mt-2 text-sm text-gray-500">
                     Be the first to share your experience.
                   </p>
@@ -446,6 +519,7 @@ const StudiosDetailsPage = ({
 
               <p className="mt-1 text-3xl font-extrabold text-[#8a6a4d] dark:text-[#C9A98B]">
                 ${studio.hourlyRate}
+
                 <span className="text-sm font-medium text-gray-500">
                   {" "}/ hour
                 </span>
@@ -453,21 +527,30 @@ const StudiosDetailsPage = ({
 
               <div className="my-6 space-y-4 border-y border-black/10 py-5 dark:border-white/10">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Workspace</span>
+                  <span className="text-gray-500">
+                    Workspace
+                  </span>
+
                   <span className="font-semibold">
                     {studio.category}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Rating</span>
+                  <span className="text-gray-500">
+                    Rating
+                  </span>
+
                   <span className="font-semibold">
                     {studio.rating || "New"} / 5
                   </span>
                 </div>
 
                 <div className="flex justify-between gap-3 text-sm">
-                  <span className="text-gray-500">Location</span>
+                  <span className="text-gray-500">
+                    Location
+                  </span>
+
                   <span className="text-right font-semibold">
                     {studio.location}
                   </span>
@@ -475,10 +558,12 @@ const StudiosDetailsPage = ({
               </div>
 
               <button
-                onClick={() => setShowBooking(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1a1410] px-5 py-4 text-sm font-bold text-white transition hover:bg-[#8a6a4d] dark:bg-[#C9A98B] dark:text-[#1a1410] dark:hover:bg-[#b8956c]"
+                onClick={handleBookNow}
+                disabled={isPending}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1a1410] px-5 py-4 text-sm font-bold text-white transition hover:bg-[#8a6a4d] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#C9A98B] dark:text-[#1a1410] dark:hover:bg-[#b8956c]"
               >
-                Book Workspace Now
+                {isPending ? "Checking Login..." : "Book Workspace Now"}
+
                 <ArrowUpRight size={18} />
               </button>
 
@@ -517,15 +602,18 @@ const StudiosDetailsPage = ({
 
             <form onSubmit={handleBooking} className="mt-7 space-y-5">
 
+              {/* Booking Date */}
               <div>
                 <label className="mb-2 block text-sm font-semibold">
                   Booking Date
                 </label>
+
                 <div className="relative">
                   <CalendarDays
                     size={18}
                     className="absolute left-3 top-3 text-gray-500"
                   />
+
                   <input
                     type="date"
                     required
@@ -542,10 +630,12 @@ const StudiosDetailsPage = ({
                 </div>
               </div>
 
+              {/* Starting Time */}
               <div>
                 <label className="mb-2 block text-sm font-semibold">
                   Starting Time
                 </label>
+
                 <input
                   type="time"
                   required
@@ -560,10 +650,12 @@ const StudiosDetailsPage = ({
                 />
               </div>
 
+              {/* Duration */}
               <div>
                 <label className="mb-2 block text-sm font-semibold">
                   Duration
                 </label>
+
                 <select
                   value={booking.duration}
                   onChange={(e) =>
@@ -582,15 +674,18 @@ const StudiosDetailsPage = ({
                 </select>
               </div>
 
+              {/* Estimated Price */}
               <div className="flex items-center justify-between rounded-xl bg-[#C9A98B]/15 p-4">
                 <span className="text-sm font-semibold">
                   Estimated Total
                 </span>
+
                 <span className="text-xl font-extrabold text-[#8a6a4d] dark:text-[#C9A98B]">
                   ${totalPrice}
                 </span>
               </div>
 
+              {/* Confirm Booking */}
               <button
                 type="submit"
                 className="w-full rounded-xl bg-[#1a1410] py-4 text-sm font-bold text-white transition hover:bg-[#8a6a4d] dark:bg-[#C9A98B] dark:text-[#1a1410]"
