@@ -23,6 +23,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 interface Studio {
   _id: string;
@@ -129,13 +130,13 @@ const StudiosDetailsPage = ({
     );
   };
 
-  // Book Now: Check Login
+  const user=session?.user
   const handleBookNow = () => {
     if (isPending) return;
 
-    if (!session?.user) {
+    if (!user) {
       router.push(
-        `/signIn?callbackURL=${encodeURIComponent(`/studios/${id}`)}`
+        `/signIn?callbackURL=${encodeURIComponent(`/studioes/${id}`)}`
       );
       return;
     }
@@ -143,38 +144,56 @@ const StudiosDetailsPage = ({
     setShowBooking(true);
   };
 
-  // Booking Submit
-  const handleBooking = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
 
-    if (!session?.user) {
-      setShowBooking(false);
+const handleBooking = async (e: FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
 
-      router.push(
-        `/signIn?callbackURL=${encodeURIComponent(`/studios/${id}`)}`
-      );
+  if (!session?.user) {
+    setShowBooking(false);
 
-      return;
-    }
+    router.push(
+      `/signIn?callbackURL=${encodeURIComponent(`/studios/${id}`)}`
+    );
 
-    if (!studio) return;
+    return;
+  }
 
-    const bookingData = {
-      studioId: studio._id,
-      studioName: studio.name,
-      userEmail: session.user.email,
-      userName: session.user.name,
+  if (!studio) return;
+
+  const bookingData = {
+    user: {
+      ...session.user,
+    },
+    studio: {
+      id: studio._id,
+      name: studio.name,
+    },
+    booking: {
       date: booking.date,
       startTime: booking.startTime,
       duration: Number(booking.duration),
       totalPrice,
-    };
+    },
+  };
 
-    console.log("Booking Information:", bookingData);
+  try {
+    const res = await fetch("http://localhost:8000/booked", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(bookingData),
+    });
 
-    // TODO: Send bookingData to your backend API.
+    if (!res.ok) {
+      throw new Error("Booking failed");
+    }
 
-    alert("Booking details collected successfully!");
+    const data = await res.json();
+
+    console.log("Booking Information:", data);
+
+    toast.success("Booking submitted successfully!");
 
     setShowBooking(false);
 
@@ -183,7 +202,12 @@ const StudiosDetailsPage = ({
       startTime: "",
       duration: "2",
     });
-  };
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to submit booking. Please try again.");
+  }
+};
+
 
   // Loading State
   if (loading) {
