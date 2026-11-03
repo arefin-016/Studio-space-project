@@ -13,7 +13,7 @@ import PopOver from "./shared/PopOver"
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/studioes", label: "Explore Studios" },
-  { href: "/how-it-works", label: "How It Works" },
+  { href: "/#how-it-works", label: "How It Works" },
   { href: "/about", label: "About Us" },
 ]
 

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -18,7 +19,6 @@ import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
 
-/* ---------- Config ---------- */
 const API_URL = "http://localhost:8000";
 
 interface Booking {
@@ -51,13 +51,11 @@ const safeDecode = (value: string) => {
   }
 };
 
-// "photo-studio" -> "Photo Studio"
 const categoryLabel = (value?: string) =>
   value
     ? value.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
     : "Studio";
 
-// "2026-11-25" -> "25 Nov 2026"
 const formatDate = (value: string) => {
   const d = new Date(`${value}T00:00:00`);
   return Number.isNaN(d.getTime())
@@ -69,7 +67,6 @@ const formatDate = (value: string) => {
       });
 };
 
-// "20:13" -> "8:13 PM"
 const formatTime = (value: string) => {
   const [h, m] = value.split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return value;
@@ -80,7 +77,6 @@ const formatTime = (value: string) => {
 const getImage = (image?: string | string[]) =>
   Array.isArray(image) ? image[0] : image;
 
-/* ---------- Shared styles ---------- */
 const cardSurface =
   "rounded-2xl border border-[#1a1410]/10 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none";
 
@@ -105,7 +101,6 @@ const inputStyle =
   "w-full rounded-xl border border-[#1a1410]/15 bg-white px-4 py-3 text-sm outline-none " +
   "focus:border-[#C9A98B] dark:border-white/15 dark:bg-[#0e0b09] dark:[color-scheme:dark]";
 
-/* ---------- Small building blocks ---------- */
 const StudioThumb = ({
   image,
   title,
@@ -150,6 +145,7 @@ const DeleteModal = ({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !deleting) onCancel();
     };
+
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [deleting, onCancel]);
@@ -229,7 +225,9 @@ const EditModal = ({
 }) => {
   const [date, setDate] = useState(booking.booking.date);
   const [startTime, setStartTime] = useState(booking.booking.startTime);
-  const [duration, setDuration] = useState(String(booking.booking.duration));
+  const [duration, setDuration] = useState(
+    String(booking.booking.duration)
+  );
 
   const hourlyRate = booking.studio.hourlyRate ?? 0;
   const total = hourlyRate * Number(duration);
@@ -238,6 +236,7 @@ const EditModal = ({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !saving) onCancel();
     };
+
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [saving, onCancel]);
@@ -283,7 +282,9 @@ const EditModal = ({
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <div>
-            <label className="mb-2 block text-sm font-semibold">Date</label>
+            <label className="mb-2 block text-sm font-semibold">
+              Date
+            </label>
             <input
               type="date"
               required
@@ -308,7 +309,9 @@ const EditModal = ({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold">Duration</label>
+            <label className="mb-2 block text-sm font-semibold">
+              Duration
+            </label>
             <select
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
@@ -350,13 +353,13 @@ const EditModal = ({
   );
 };
 
-/* ---------- Page ---------- */
 const MyStudioListingsPage = () => {
   const params = useParams<{ email: string }>();
   const email = safeDecode(params?.email ?? "");
 
   const { data: session, isPending } = authClient.useSession();
   const user = session?.user;
+
   const isOwner =
     !!user && !!email && user.email.toLowerCase() === email.toLowerCase();
 
@@ -377,6 +380,7 @@ const MyStudioListingsPage = () => {
         `${API_URL}/bookedStudio/${encodeURIComponent(email)}`,
         { cache: "no-store" }
       );
+
       if (!res.ok) throw new Error("Failed to load");
 
       const data = await res.json();
@@ -398,25 +402,40 @@ const MyStudioListingsPage = () => {
     setDeleting(true);
 
     try {
-      const res = await fetch(`${API_URL}/deleteBooking/${toDelete._id}`, {
+      const res = await fetch(`${API_URL}/bookings/${toDelete._id}`, {
         method: "DELETE",
       });
+
       const result = await res.json().catch(() => null);
 
-      if (!res.ok || result?.deletedCount === 0) {
-        throw new Error(result?.message ?? "Could not delete the booking.");
+      if (!res.ok) {
+        throw new Error(
+          result?.message ?? `Delete failed (server error ${res.status}).`
+        );
       }
 
-      setBookings((prev) => prev.filter((b) => b._id !== toDelete._id));
-      toast.success("Booking deleted");
+      if (result?.deletedCount === 0) {
+        throw new Error("Booking not found. It may already be deleted.");
+      }
+
+      setBookings((prev) =>
+        prev.filter((b) => b._id !== toDelete._id)
+      );
+
+      toast.success("Booking deleted successfully", {
+        description: `${toDelete.studio.name || "Studio"} on ${formatDate(
+          toDelete.booking.date
+        )} was removed.`,
+      });
+
       setToDelete(null);
     } catch (err) {
       toast.error(
         err instanceof TypeError
           ? "Can't reach the server. Make sure your backend is running."
           : err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again."
+            ? err.message
+            : "Something went wrong. Please try again."
       );
     } finally {
       setDeleting(false);
@@ -430,38 +449,64 @@ const MyStudioListingsPage = () => {
   }) => {
     if (!toEdit) return;
 
-    const totalPrice = (toEdit.studio.hourlyRate ?? 0) * values.duration;
+    const totalPrice =
+      (toEdit.studio.hourlyRate ?? 0) * values.duration;
 
     setSaving(true);
 
     try {
-      const res = await fetch(`${API_URL}/updateBooking/${toEdit._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...values, totalPrice }),
+      const res = await fetch(`${API_URL}/editStudio/${toEdit._id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...values,
+          totalPrice,
+        }),
       });
+
       const result = await res.json().catch(() => null);
 
-      if (!res.ok || result?.matchedCount === 0) {
-        throw new Error(result?.message ?? "Could not update the booking.");
+      if (!res.ok) {
+        throw new Error(
+          result?.message ?? `Update failed (server error ${res.status}).`
+        );
+      }
+
+      if (result?.matchedCount === 0) {
+        throw new Error("Booking not found. It may have been deleted.");
       }
 
       setBookings((prev) =>
         prev.map((b) =>
           b._id === toEdit._id
-            ? { ...b, booking: { ...values, totalPrice } }
+            ? {
+                ...b,
+                booking: {
+                  ...b.booking,
+                  ...values,
+                  totalPrice,
+                },
+              }
             : b
         )
       );
-      toast.success("Booking updated");
+
+      toast.success("Booking updated successfully", {
+        description: `New date: ${formatDate(values.date)} at ${formatTime(
+          values.startTime
+        )}.`,
+      });
+
       setToEdit(null);
     } catch (err) {
       toast.error(
         err instanceof TypeError
           ? "Can't reach the server. Make sure your backend is running."
           : err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again."
+            ? err.message
+            : "Something went wrong. Please try again."
       );
     } finally {
       setSaving(false);
@@ -469,9 +514,7 @@ const MyStudioListingsPage = () => {
   };
 
   return (
-    /* pt-28 clears the fixed navbar */
     <div className="relative min-h-[100dvh] bg-[#faf8f5] px-4 pb-16 pt-28 text-[#1a1410] dark:bg-[#0e0b09] dark:text-white sm:px-6">
-      {/* soft tan glow */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -482,14 +525,12 @@ const MyStudioListingsPage = () => {
       />
 
       <div className="relative mx-auto w-full max-w-6xl">
-        {/* Session loading */}
         {isPending && (
           <div className="flex justify-center py-24">
             <Loader2 className="h-6 w-6 animate-spin text-[#8a6a4d] dark:text-[#C9A98B]" />
           </div>
         )}
 
-        {/* Not signed in */}
         {!isPending && !user && (
           <div className={`${cardSurface} mx-auto max-w-md p-8 text-center`}>
             <h1 className="text-3xl font-extrabold uppercase tracking-tight">
@@ -504,7 +545,6 @@ const MyStudioListingsPage = () => {
           </div>
         )}
 
-        {/* Signed in as someone else */}
         {!isPending && user && !isOwner && (
           <div className={`${cardSurface} mx-auto max-w-md p-8 text-center`}>
             <h1 className="text-3xl font-extrabold uppercase tracking-tight">
@@ -522,10 +562,8 @@ const MyStudioListingsPage = () => {
           </div>
         )}
 
-        {/* Bookings */}
         {!isPending && isOwner && (
           <>
-            {/* Header */}
             <div className="mb-9">
               <div className="mb-3 flex items-center gap-3">
                 <span className="h-px w-8 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
@@ -553,14 +591,12 @@ const MyStudioListingsPage = () => {
               </p>
             </div>
 
-            {/* Loading */}
             {status === "loading" && (
               <div className="flex justify-center py-20">
                 <Loader2 className="h-6 w-6 animate-spin text-[#8a6a4d] dark:text-[#C9A98B]" />
               </div>
             )}
 
-            {/* Error */}
             {status === "error" && (
               <div className={`${cardSurface} p-10 text-center`}>
                 <h2 className="text-xl font-extrabold uppercase tracking-tight">
@@ -582,7 +618,6 @@ const MyStudioListingsPage = () => {
               </div>
             )}
 
-            {/* Empty */}
             {status === "ready" && bookings.length === 0 && (
               <div className="rounded-2xl border border-dashed border-[#1a1410]/20 px-6 py-16 text-center dark:border-white/15">
                 <h2 className="text-xl font-extrabold uppercase tracking-tight">
@@ -597,7 +632,6 @@ const MyStudioListingsPage = () => {
               </div>
             )}
 
-            {/* Table (tablet and up) */}
             {status === "ready" && bookings.length > 0 && (
               <>
                 <div
@@ -695,7 +729,6 @@ const MyStudioListingsPage = () => {
                   </table>
                 </div>
 
-                {/* Cards (phones) */}
                 <div className="grid gap-5 md:hidden">
                   {bookings.map((item) => (
                     <article
@@ -784,7 +817,6 @@ const MyStudioListingsPage = () => {
         )}
       </div>
 
-      {/* Update modal */}
       {toEdit && (
         <EditModal
           booking={toEdit}
@@ -794,7 +826,6 @@ const MyStudioListingsPage = () => {
         />
       )}
 
-      {/* Delete confirmation */}
       {toDelete && (
         <DeleteModal
           booking={toDelete}

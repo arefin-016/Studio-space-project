@@ -4,7 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LogOut, Plus, User } from "lucide-react"
+import { CalendarCheck, LogOut, Plus, User } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -24,6 +24,11 @@ const rowClasses =
   "uppercase tracking-[0.14em] text-neutral-700 transition-colors " +
   "hover:bg-sand/20 hover:text-neutral-900 " +
   "dark:text-white/85 dark:hover:bg-white/10 dark:hover:text-white"
+
+// Round icon badge shown at the left of each menu row
+const iconBadgeClasses =
+  "flex size-7 items-center justify-center rounded-full border border-sand-deep/50 " +
+  "text-sand-deep dark:border-sand/50 dark:text-sand"
 
 // Same tan pill as "Sign Up" in the navbar
 const pillClasses =
@@ -134,16 +139,27 @@ const PopOver = () => {
         <div className="h-px bg-black/10 dark:bg-white/10" />
 
         {/* Links */}
-        <div className="p-2">
+        <div className="space-y-1 p-2">
           <Link
             href="/AddNewStudio"
             onClick={() => setOpen(false)}
             className={rowClasses}
           >
-            <span className="flex size-7 items-center justify-center rounded-full border border-sand-deep/50 text-sand-deep dark:border-sand/50 dark:text-sand">
+            <span className={iconBadgeClasses}>
               <Plus size={14} aria-hidden="true" />
             </span>
             Add New Studio
+          </Link>
+
+          <Link
+            href={`/myStudioListings/${encodeURIComponent(user.email)}`}
+            onClick={() => setOpen(false)}
+            className={rowClasses}
+          >
+            <span className={iconBadgeClasses}>
+              <CalendarCheck size={14} aria-hidden="true" />
+            </span>
+            My Studio Listings
           </Link>
         </div>
 
