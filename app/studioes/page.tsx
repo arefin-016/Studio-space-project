@@ -12,7 +12,7 @@ interface Studio {
   image: string
 }
 
-const API_URL = "http://localhost:8000"
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL}`
 
 const getStudios = async (): Promise<Studio[]> => {
   try {

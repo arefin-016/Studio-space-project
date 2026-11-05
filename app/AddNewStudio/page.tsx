@@ -1,9 +1,8 @@
+"use client";
 
-"use client"
-
-import { Suspense, useEffect, useState } from "react"
-import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   MapPin,
   Image as ImageIcon,
@@ -11,15 +10,14 @@ import {
   Users,
   Type,
   ChevronDown,
-  Check,
   Plus,
   Loader2,
-} from "lucide-react"
-import { toast } from "sonner"
+} from "lucide-react";
+import { toast } from "sonner";
+import { authClient } from "@/lib/auth-client";
+import { getTokenClient } from "@/lib/getTokenFromClient";
 
-import { authClient } from "@/lib/auth-client"
-
-const API_URL = "http://localhost:8000"
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const categories = [
   { value: "photo-studio", label: "Photo Studio" },
@@ -28,7 +26,7 @@ const categories = [
   { value: "music-suite", label: "Music Suite" },
   { value: "workshop", label: "Workshop" },
   { value: "other", label: "Other" },
-]
+];
 
 const amenities = [
   "Wi-Fi",
@@ -41,824 +39,608 @@ const amenities = [
   "Kitchen",
   "Restroom",
   "24/7 Access",
-]
+];
 
-type FieldName =
-  | "title"
-  | "category"
-  | "hourlyRate"
-  | "securityDeposit"
-  | "maxCapacity"
-  | "location"
-  | "image"
-  | "overview"
-
-type Errors = Partial<Record<FieldName, string>>
-
-const FIELD_ORDER: FieldName[] = [
-  "title",
-  "category",
-  "hourlyRate",
-  "securityDeposit",
-  "maxCapacity",
-  "location",
-  "image",
-  "overview",
-]
-
-const isValidUrl = (value: string) => {
-  try {
-    const url = new URL(value)
-    return url.protocol === "http:" || url.protocol === "https:"
-  } catch {
-    return false
-  }
+interface Studio {
+  _id: string;
+  title: string;
+  category: string;
+  hourlyRate: number;
+  securityDeposit: number;
+  maxCapacity: number;
+  location: string;
+  image: string;
+  amenities: string[];
+  overview: string;
 }
 
-const validate = (v: Record<FieldName, string>): Errors => {
-  const errors: Errors = {}
-
-  if (!v.title) errors.title = "Studio title is required."
-  else if (v.title.length < 3)
-    errors.title = "Title must be at least 3 characters."
-
-  if (!v.category) errors.category = "Please choose a studio category."
-
-  if (!v.hourlyRate) errors.hourlyRate = "Hourly rate is required."
-  else if (Number(v.hourlyRate) <= 0)
-    errors.hourlyRate = "Enter a rate greater than 0."
-
-  if (v.securityDeposit && Number(v.securityDeposit) < 0)
-    errors.securityDeposit = "Deposit can't be negative."
-
-  if (!v.maxCapacity) errors.maxCapacity = "Maximum capacity is required."
-  else if (
-    !Number.isInteger(Number(v.maxCapacity)) ||
-    Number(v.maxCapacity) < 1
-  )
-    errors.maxCapacity = "Enter a whole number of 1 or more."
-
-  if (!v.location) errors.location = "Studio address is required."
-  else if (v.location.length < 5)
-    errors.location = "Please enter the complete address."
-
-  if (!v.image) errors.image = "Studio image URL is required."
-  else if (!isValidUrl(v.image))
-    errors.image = "Enter a valid URL starting with http:// or https://"
-
-  if (!v.overview) errors.overview = "Please describe your studio."
-  else if (v.overview.length < 20)
-    errors.overview = "Overview must be at least 20 characters."
-
-  return errors
-}
-
-type Prefill = {
-  ownerEmail: string
-  title: string
-  category: string
-  hourlyRate: string
-  securityDeposit: string
-  maxCapacity: string
-  location: string
-  image: string
-  amenities: string[]
-  overview: string
-}
+const inputClass =
+  "w-full rounded-xl border border-[#1a1410]/15 bg-[#faf8f5] px-4 py-3 text-sm text-[#1a1410] outline-none focus:border-[#B8926F] dark:border-white/10 dark:bg-white/5 dark:text-white";
 
 const labelClass =
-  "mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] " +
-  "text-[#3d3228]/75 dark:text-white/70"
+  "mb-2 block text-xs font-semibold uppercase tracking-wider text-[#3d3228]/75 dark:text-white/70";
 
-const fieldClass =
-  "w-full rounded-xl border text-sm outline-none transition " +
-  "border-[#1a1410]/15 bg-[#faf8f5] text-[#1a1410] placeholder:text-[#1a1410]/40 " +
-  "dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/35 " +
-  "focus:border-[#B8926F] focus:ring-2 focus:ring-[#C9A98B]/40 " +
-  "dark:focus:border-[#C9A98B] dark:focus:ring-[#C9A98B]/30"
+function getStudioId(item: any): string {
+  if (!item?._id) return "";
 
-const inputClass = `${fieldClass} h-11 pl-11 pr-4`
-
-const errorFieldClass =
-  "!border-red-500/70 focus:!ring-red-500/25 dark:!border-red-400/70"
-
-const iconClass =
-  "pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 " +
-  "text-[#1a1410]/40 dark:text-white/40"
-
-const optionClass = "bg-white text-[#1a1410] dark:bg-[#1a1511] dark:text-white"
-
-const hintClass = "mt-2 text-xs text-[#1a1410]/50 dark:text-white/45"
-
-const buttonClass =
-  "flex h-11 items-center justify-center gap-2 rounded-full bg-[#C9A98B] px-8 " +
-  "text-sm font-bold uppercase tracking-[0.18em] text-[#1a1410] transition " +
-  "hover:bg-[#D8BDA2] focus-visible:outline-none focus-visible:ring-2 " +
-  "focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 " +
-  "focus-visible:ring-offset-white dark:focus-visible:ring-offset-black " +
-  "disabled:cursor-not-allowed disabled:opacity-60"
-
-const outlineButtonClass =
-  "flex h-11 items-center justify-center rounded-full border border-[#8a6a4d]/60 px-8 " +
-  "text-sm font-bold uppercase tracking-[0.18em] text-[#3d3228] transition " +
-  "hover:bg-[#C9A98B]/15 dark:border-[#C9A98B]/60 dark:text-white " +
-  "disabled:cursor-not-allowed disabled:opacity-60"
-
-const Field = ({
-  label,
-  htmlFor,
-  required,
-  hint,
-  error,
-  children,
-}: {
-  label: string
-  htmlFor: string
-  required?: boolean
-  hint?: string
-  error?: string
-  children: React.ReactNode
-}) => (
-  <div>
-    <label htmlFor={htmlFor} className={labelClass}>
-      {label}
-      {required && <span className="ml-1 text-red-500">*</span>}
-    </label>
-
-    {children}
-
-    {error ? (
-      <p
-        role="alert"
-        className="mt-2 text-xs font-medium text-red-600 dark:text-red-400"
-      >
-        {error}
-      </p>
-    ) : (
-      hint && <p className={hintClass}>{hint}</p>
-    )}
-  </div>
-)
-
-const Section = ({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) => (
-  <section className="border-t border-[#1a1410]/10 pt-7 dark:border-white/10">
-    <h2 className="mb-5 flex items-center gap-3 text-sm font-extrabold tracking-[0.2em] uppercase">
-      <span className="h-px w-6 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
-      {title}
-    </h2>
-
-    <div className="space-y-5">{children}</div>
-  </section>
-)
-
-const AddStudioContent = () => {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-
-  const editId = searchParams.get("edit")
-  const isEdit = Boolean(editId)
-
-  const { data: session, isPending } = authClient.useSession()
-  const user = session?.user
-
-  const [errors, setErrors] = useState<Errors>({})
-  const [submitting, setSubmitting] = useState(false)
-  const [imageUrl, setImageUrl] = useState("")
-  const [imageFailed, setImageFailed] = useState(false)
-  const [prefill, setPrefill] = useState<Prefill | null>(null)
-  const [editLoading, setEditLoading] = useState(isEdit)
-
-  useEffect(() => {
-    if (!editId) return
-
-    let cancelled = false
-
-    const loadStudio = async () => {
-      try {
-        const res = await fetch(`${API_URL}/getStudio/${editId}`, {
-          cache: "no-store",
-        })
-
-        if (!res.ok) throw new Error("Studio not found")
-
-        const data = (await res.json()) as Record<string, unknown>
-
-        if (cancelled) return
-
-        const next: Prefill = {
-          ownerEmail: String(data.ownerEmail ?? ""),
-          title: String(data.title ?? data.name ?? ""),
-          category: String(data.category ?? ""),
-          hourlyRate: String(data.hourlyRate ?? data.price ?? ""),
-          securityDeposit: String(data.securityDeposit ?? ""),
-          maxCapacity: String(data.maxCapacity ?? data.capacity ?? ""),
-          location: String(data.location ?? ""),
-          image: String(data.image ?? ""),
-          amenities: Array.isArray(data.amenities)
-            ? data.amenities.map(String)
-            : [],
-          overview: String(data.overview ?? data.description ?? ""),
-        }
-
-        setPrefill(next)
-        setImageUrl(next.image)
-        setEditLoading(false)
-      } catch {
-        if (cancelled) return
-
-        setEditLoading(false)
-
-        toast.error("Couldn't load this studio", {
-          description: "Please try again in a moment.",
-        })
-
-        router.back()
-      }
-    }
-
-    loadStudio()
-
-    return () => {
-      cancelled = true
-    }
-  }, [editId, router])
-
-  const invalid = (name: FieldName) => (errors[name] ? errorFieldClass : "")
-
-  const handleChange = (e: React.ChangeEvent<HTMLFormElement>) => {
-    const name = e.target.name as FieldName
-
-    if (name && errors[name]) {
-      setErrors((prev) => {
-        const next = { ...prev }
-        delete next[name]
-        return next
-      })
-    }
+  if (typeof item._id === "string") {
+    return item._id;
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  if (item._id.$oid) {
+    return item._id.$oid;
+  }
 
-    if (!user) {
-      toast.error("Please sign in first")
-      return
-    }
+  return String(item._id);
+}
 
-    const formEl = e.currentTarget
-    const form = new FormData(formEl)
+function AddStudioForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-    const values = {
-      title: String(form.get("title") ?? "").trim(),
-      category: String(form.get("category") ?? ""),
-      hourlyRate: String(form.get("hourlyRate") ?? "").trim(),
-      securityDeposit: String(form.get("securityDeposit") ?? "").trim(),
-      maxCapacity: String(form.get("maxCapacity") ?? "").trim(),
-      location: String(form.get("location") ?? "").trim(),
-      image: String(form.get("image") ?? "").trim(),
-      overview: String(form.get("overview") ?? "").trim(),
-    }
+  const editId = searchParams.get("edit");
+  const isEditMode = Boolean(editId);
 
-    const found = validate(values)
-    setErrors(found)
+  const { data: session, isPending } = authClient.useSession();
+  const user = session?.user;
 
-    const problems = Object.keys(found).length
+  const [studio, setStudio] = useState<Studio | null>(null);
+  const [editLoading, setEditLoading] = useState(Boolean(editId));
+  const [submitting, setSubmitting] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
 
-    if (problems > 0) {
-      toast.error("Please complete the form", {
-        description: `${problems} ${
-          problems === 1 ? "field needs" : "fields need"
-        } your attention.`,
-      })
+  // Fetch existing studio for editing
+  useEffect(() => {
+    if (!editId || !user?.email) return;
 
-      const first = FIELD_ORDER.find((key) => found[key])
+    let active = true;
 
-      if (first) {
-        ;(formEl.elements.namedItem(first) as HTMLElement | null)?.focus()
+    const fetchStudio = async () => {
+      setEditLoading(true);
+
+      try {
+        const jwtToken = await getTokenClient();
+
+        const res = await fetch(
+          `${API_URL}/myStudioes/${encodeURIComponent(user.email)}`,
+          {
+            method: "GET",
+            headers: {
+              authorization: `Bearer ${jwtToken}`,
+            },
+          }
+        );
+
+        const responseData = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          throw new Error(
+            responseData?.message || "Failed to fetch your studios."
+          );
+        }
+
+        const studios: Studio[] = Array.isArray(responseData)
+          ? responseData
+          : Array.isArray(responseData?.data)
+            ? responseData.data
+            : [];
+
+        const selectedStudio = studios.find(
+          (item) => getStudioId(item) === String(editId)
+        );
+
+        if (!selectedStudio) {
+          throw new Error("Studio not found.");
+        }
+
+        if (active) {
+          setStudio(selectedStudio);
+          setImageUrl(selectedStudio.image || "");
+        }
+      } catch (error) {
+        console.error("Fetch studio error:", error);
+
+        if (active) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to load studio."
+          );
+        }
+      } finally {
+        if (active) {
+          setEditLoading(false);
+        }
       }
+    };
 
-      return
+    fetchStudio();
+
+    return () => {
+      active = false;
+    };
+  }, [editId, user?.email]);
+
+  // Create or update studio
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
+
+    if (!user || submitting) return;
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    const title = String(formData.get("title") || "").trim();
+    const category = String(formData.get("category") || "");
+    const hourlyRate = Number(formData.get("hourlyRate"));
+    const securityDeposit = Number(
+      formData.get("securityDeposit") || 0
+    );
+    const maxCapacity = Number(formData.get("maxCapacity"));
+    const location = String(formData.get("location") || "").trim();
+    const image = String(formData.get("image") || "").trim();
+    const overview = String(formData.get("overview") || "").trim();
+
+    if (
+      !title ||
+      !category ||
+      !hourlyRate ||
+      !maxCapacity ||
+      !location ||
+      !image ||
+      !overview
+    ) {
+      toast.error("Please fill in all required fields.");
+      return;
     }
 
-    const payload = {
-      title: values.title,
-      category: values.category,
-      hourlyRate: Number(values.hourlyRate),
-      securityDeposit: Number(values.securityDeposit || 0),
-      maxCapacity: Number(values.maxCapacity),
-      location: values.location,
-      image: values.image,
-      amenities: form.getAll("amenities").map(String),
-      overview: values.overview,
-      ownerName: user.name,
-      ownerEmail: user.email,
+    if (hourlyRate <= 0 || maxCapacity < 1) {
+      toast.error("Please enter valid pricing and capacity.");
+      return;
     }
-
-    const ownerEmail = prefill?.ownerEmail || user.email
-
-    setSubmitting(true)
 
     try {
-      // Get JWT token from Better Auth
-      const { data: tokenData, error: tokenError } =
-        await authClient.token()
+      setSubmitting(true);
 
-      if (tokenError || !tokenData?.token) {
-        throw new Error(
-          "Authentication token not found. Please sign in again."
-        )
-      }
+      const jwtToken = await getTokenClient();
 
-      const jwtToken = tokenData.token
+      const payload = {
+        title,
+        category,
+        hourlyRate,
+        securityDeposit,
+        maxCapacity,
+        location,
+        image,
+        amenities: formData.getAll("amenities").map(String),
+        overview,
+        ownerName: user.name,
+        ownerEmail: user.email,
+      };
 
-      const res = await fetch(
-        isEdit
-          ? `${API_URL}/studios/${encodeURIComponent(ownerEmail)}`
-          : `${API_URL}/addStudio`,
-        {
-          method: isEdit ? "PATCH" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${jwtToken}`,
-          },
-          body: JSON.stringify(payload),
-        }
-      )
+      const url = isEditMode
+        ? `${API_URL}/studios/${encodeURIComponent(user.email)}`
+        : `${API_URL}/addStudio`;
 
-      const result = await res.json().catch(() => null)
+      const res = await fetch(url, {
+        method: isEditMode ? "PATCH" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${jwtToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-      if (res.status === 409) {
-        toast.error("Studio already added", {
-          description:
-            result?.message ??
-            "You have already listed a studio with this email.",
-        })
-
-        return
-      }
+      const result = await res.json().catch(() => null);
 
       if (!res.ok) {
         throw new Error(
-          result?.message ??
-            (isEdit
-              ? "Could not save your changes."
-              : "Could not publish the studio.")
-        )
+          result?.message || "Failed to save studio."
+        );
       }
 
-      if (isEdit) {
-        toast.success("Studio updated!", {
-          description: "Your changes have been saved.",
-        })
+      if (isEditMode) {
+        toast.success("Studio updated successfully!");
 
+        // Updated redirect path to the correct owner route[cite: 1]
         router.push(
-          `/studioes/owner/${encodeURIComponent(ownerEmail)}`
-        )
+          `/studioes/owner/${encodeURIComponent(user.email)}`
+        );
+      } else {
+        toast.success("Studio published successfully!");
 
-        return
+        form.reset();
+        setImageUrl("");
       }
+    } catch (error) {
+      console.error("Submit error:", error);
 
-      toast.success("Studio published!", {
-        description: "Your studio was submitted successfully.",
-      })
-
-      formEl.reset()
-      setErrors({})
-      setImageUrl("")
-      setImageFailed(false)
-
-      window.scrollTo({ top: 0, behavior: "smooth" })
-    } catch (err) {
       toast.error(
-        err instanceof TypeError
-          ? "Can't reach the server. Make sure your backend is running."
-          : err instanceof Error
-            ? err.message
-            : "Something went wrong. Please try again."
-      )
+        error instanceof Error
+          ? error.message
+          : "Something went wrong."
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
+  };
+
+  if (isPending || (isEditMode && editLoading)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
-  const categoryOptions = prefill?.category
-    ? categories.some((c) => c.value === prefill.category)
-      ? categories
-      : [
-          ...categories,
-          {
-            value: prefill.category,
-            label: prefill.category.replace(/-/g, " "),
-          },
-        ]
-    : categories
+  if (!user) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <h1 className="text-2xl font-bold">
+          Please sign in first
+        </h1>
 
-  const amenityOptions = [
-    ...amenities,
-    ...(prefill?.amenities ?? []).filter((a) => !amenities.includes(a)),
-  ]
+        <Link
+          href="/signIn"
+          className="rounded-full bg-[#C9A98B] px-6 py-3"
+        >
+          Sign In
+        </Link>
+      </div>
+    );
+  }
+
+  if (isEditMode && !studio) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+        <h1 className="text-2xl font-bold">
+          Studio not found
+        </h1>
+
+        <p className="text-sm text-gray-500">
+          Please check the studio ID and try again.
+        </p>
+
+        <button
+          onClick={() => router.back()}
+          className="rounded-full bg-[#C9A98B] px-6 py-3"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative min-h-[100dvh] bg-[#faf8f5] px-4 pt-28 pb-16 text-[#1a1410] sm:px-6 dark:bg-[#0e0b09] dark:text-white">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(60% 40% at 50% 0%, rgba(201,169,139,0.18), transparent 70%)",
-        }}
-      />
+    <div className="min-h-screen bg-[#faf8f5] px-4 pb-16 pt-28 text-[#1a1410] dark:bg-[#0e0b09] dark:text-white sm:px-6">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-black/10 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-white/[0.04] sm:p-10">
 
-      <div className="relative mx-auto w-full max-w-3xl">
-        {(isPending || editLoading) && (
-          <div className="flex justify-center py-24">
-            <Loader2 className="h-6 w-6 animate-spin text-[#8a6a4d] dark:text-[#C9A98B]" />
-          </div>
-        )}
+        <div className="mb-9">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.3em] text-[#8a6a4d]">
+            Host your space
+          </p>
 
-        {!isPending && !editLoading && !user && (
-          <div className="mx-auto max-w-md rounded-2xl border border-[#1a1410]/10 bg-white p-8 text-center shadow-xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none">
-            <h1 className="text-3xl font-extrabold tracking-tight uppercase">
-              Sign in first
-            </h1>
+          <h1 className="text-3xl font-extrabold uppercase sm:text-5xl">
+            {isEditMode ? "Update Your Studio" : "List Your Studio"}
+          </h1>
 
-            <p className="mt-3 text-sm text-[#3d3228]/70 dark:text-white/60">
-              You need an account to list your studio.
-            </p>
+          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+            {isEditMode
+              ? "Update your studio information."
+              : "Share your creative space with professionals and creators."}
+          </p>
+        </div>
 
-            <Link href="/signIn" className={`${buttonClass} mt-6`}>
-              Sign In
-            </Link>
-          </div>
-        )}
+        <form onSubmit={handleSubmit} className="space-y-8">
 
-        {!isPending && !editLoading && user && (
-          <form
-            onSubmit={handleSubmit}
-            onChange={handleChange}
-            noValidate
-            className="rounded-2xl border border-[#1a1410]/10 bg-white p-6 shadow-xl sm:p-10 dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none"
-          >
-            <div className="mb-9">
-              <div className="mb-3 flex items-center gap-3">
-                <span className="h-px w-8 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
+          <section className="space-y-5">
+            <h2 className="border-b border-black/10 pb-3 text-sm font-bold uppercase tracking-widest dark:border-white/10">
+              The Basics
+            </h2>
 
-                <span className="text-xs font-semibold tracking-[0.3em] text-[#8a6a4d] uppercase dark:text-[#C9A98B]">
-                  {isEdit ? "Edit listing" : "Host your space"}
-                </span>
+            <div>
+              <label htmlFor="title" className={labelClass}>
+                Studio Title *
+              </label>
+
+              <div className="relative">
+                <Type className="absolute left-4 top-3.5 h-4 w-4 text-gray-400" />
+
+                <input
+                  id="title"
+                  name="title"
+                  required
+                  defaultValue={studio?.title || ""}
+                  placeholder="Modern Photography Studio"
+                  className={`${inputClass} pl-11`}
+                />
               </div>
-
-              <h1 className="text-3xl font-extrabold tracking-tight uppercase sm:text-5xl">
-                {isEdit ? "Update your studio" : "List your studio"}
-              </h1>
-
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#3d3228]/70 dark:text-white/60">
-                {isEdit ? (
-                  <>
-                    Change the details below and save to update your listing.
-                    Fields marked <span className="text-red-500">*</span> are
-                    required.
-                  </>
-                ) : (
-                  <>
-                    Share your creative space with professionals and creators.
-                    Fill in the details below to publish your studio listing.
-                    Fields marked <span className="text-red-500">*</span> are
-                    required.
-                  </>
-                )}
-              </p>
             </div>
 
-            <div className="space-y-8">
-              <Section title="The basics">
-                <Field
-                  label="Studio title"
-                  htmlFor="title"
+            <div>
+              <label htmlFor="category" className={labelClass}>
+                Studio Category *
+              </label>
+
+              <div className="relative">
+                <select
+                  id="category"
+                  name="category"
                   required
-                  error={errors.title}
+                  defaultValue={studio?.category || ""}
+                  className={`${inputClass} appearance-none pr-10`}
                 >
-                  <div className="relative">
-                    <Type className={iconClass} />
+                  <option value="" disabled>
+                    Choose category
+                  </option>
 
-                    <input
-                      id="title"
-                      name="title"
-                      type="text"
-                      placeholder="e.g. Modern Photography Studio"
-                      defaultValue={prefill?.title ?? ""}
-                      aria-invalid={!!errors.title}
-                      className={`${inputClass} ${invalid("title")}`}
-                    />
-                  </div>
-                </Field>
-
-                <Field
-                  label="Studio category"
-                  htmlFor="category"
-                  required
-                  error={errors.category}
-                >
-                  <div className="relative">
-                    <select
-                      id="category"
-                      name="category"
-                      defaultValue={prefill?.category ?? ""}
-                      aria-invalid={!!errors.category}
-                      className={`${fieldClass} h-11 appearance-none px-4 pr-11 [color-scheme:light] dark:[color-scheme:dark] ${invalid("category")}`}
-                    >
-                      <option value="" disabled className={optionClass}>
-                        Choose studio category
-                      </option>
-
-                      {categoryOptions.map((c) => (
-                        <option
-                          key={c.value}
-                          value={c.value}
-                          className={optionClass}
-                        >
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-
-                    <ChevronDown className="pointer-events-none absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 text-[#1a1410]/50 dark:text-white/50" />
-                  </div>
-                </Field>
-              </Section>
-
-              <Section title="Pricing & capacity">
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <Field
-                    label="Hourly rate ($)"
-                    htmlFor="hourlyRate"
-                    required
-                    error={errors.hourlyRate}
-                  >
-                    <div className="relative">
-                      <DollarSign className={iconClass} />
-
-                      <input
-                        id="hourlyRate"
-                        name="hourlyRate"
-                        type="number"
-                        placeholder="50"
-                        defaultValue={prefill?.hourlyRate ?? ""}
-                        aria-invalid={!!errors.hourlyRate}
-                        className={`${inputClass} ${invalid("hourlyRate")}`}
-                      />
-                    </div>
-                  </Field>
-
-                  <Field
-                    label="Security deposit ($)"
-                    htmlFor="securityDeposit"
-                    hint="Optional"
-                    error={errors.securityDeposit}
-                  >
-                    <div className="relative">
-                      <DollarSign className={iconClass} />
-
-                      <input
-                        id="securityDeposit"
-                        name="securityDeposit"
-                        type="number"
-                        placeholder="100"
-                        defaultValue={prefill?.securityDeposit ?? ""}
-                        aria-invalid={!!errors.securityDeposit}
-                        className={`${inputClass} ${invalid("securityDeposit")}`}
-                      />
-                    </div>
-                  </Field>
-
-                  <Field
-                    label="Maximum capacity"
-                    htmlFor="maxCapacity"
-                    required
-                    error={errors.maxCapacity}
-                  >
-                    <div className="relative">
-                      <Users className={iconClass} />
-
-                      <input
-                        id="maxCapacity"
-                        name="maxCapacity"
-                        type="number"
-                        placeholder="e.g. 20 people"
-                        defaultValue={prefill?.maxCapacity ?? ""}
-                        aria-invalid={!!errors.maxCapacity}
-                        className={`${inputClass} ${invalid("maxCapacity")}`}
-                      />
-                    </div>
-                  </Field>
-                </div>
-              </Section>
-
-              <Section title="Location & photo">
-                <Field
-                  label="Location / address"
-                  htmlFor="location"
-                  required
-                  error={errors.location}
-                >
-                  <div className="relative">
-                    <MapPin className={iconClass} />
-
-                    <input
-                      id="location"
-                      name="location"
-                      type="text"
-                      placeholder="Enter complete studio address"
-                      defaultValue={prefill?.location ?? ""}
-                      aria-invalid={!!errors.location}
-                      className={`${inputClass} ${invalid("location")}`}
-                    />
-                  </div>
-                </Field>
-
-                <Field
-                  label="Studio image URL"
-                  htmlFor="image"
-                  required
-                  hint="Provide a direct image URL of your studio."
-                  error={errors.image}
-                >
-                  <div className="relative">
-                    <ImageIcon className={iconClass} />
-
-                    <input
-                      id="image"
-                      name="image"
-                      type="url"
-                      placeholder="https://example.com/studio-image.jpg"
-                      defaultValue={prefill?.image ?? ""}
-                      aria-invalid={!!errors.image}
-                      className={`${inputClass} ${invalid("image")}`}
-                      onChange={(e) => {
-                        setImageUrl(e.target.value)
-                        setImageFailed(false)
-                      }}
-                    />
-                  </div>
-
-                  {imageUrl && !imageFailed && (
-                    <img
-                      src={imageUrl}
-                      alt="Studio preview"
-                      onError={() => setImageFailed(true)}
-                      className="mt-3 h-44 w-full rounded-xl border border-[#1a1410]/10 object-cover dark:border-white/10"
-                    />
-                  )}
-                </Field>
-              </Section>
-
-              <Section title="Studio amenities">
-                <p className="-mt-2 text-sm text-[#3d3228]/70 dark:text-white/60">
-                  Select all facilities available in your studio.
-                </p>
-
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {amenityOptions.map((amenity) => (
-                    <label key={amenity} className="cursor-pointer">
-                      <input
-                        type="checkbox"
-                        name="amenities"
-                        value={amenity}
-                        defaultChecked={
-                          prefill?.amenities.includes(amenity) ?? false
-                        }
-                        className="peer sr-only"
-                      />
-
-                      <span
-                        className={
-                          "flex h-full items-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors " +
-                          "border-[#1a1410]/15 bg-[#faf8f5] text-[#1a1410]/80 hover:border-[#B8926F] " +
-                          "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:border-[#C9A98B] " +
-                          "peer-checked:border-[#B8926F] peer-checked:bg-[#C9A98B]/20 peer-checked:text-[#1a1410] " +
-                          "dark:peer-checked:border-[#C9A98B] dark:peer-checked:bg-[#C9A98B]/15 dark:peer-checked:text-white " +
-                          "peer-focus-visible:ring-2 peer-focus-visible:ring-[#C9A98B]/50 " +
-                          "[&>svg]:opacity-0 peer-checked:[&>svg]:opacity-100"
-                        }
-                      >
-                        <Check
-                          size={14}
-                          className="shrink-0 text-[#8a6a4d] transition-opacity dark:text-[#C9A98B]"
-                          aria-hidden="true"
-                        />
-
-                        <span className="min-w-0 break-words">
-                          {amenity}
-                        </span>
-                      </span>
-                    </label>
+                  {categories.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
                   ))}
-                </div>
-              </Section>
+                </select>
 
-              <Section title="Detailed overview">
-                <Field
-                  label="About your studio"
-                  htmlFor="overview"
-                  required
-                  hint="Give potential customers a clear idea of your creative space."
-                  error={errors.overview}
-                >
-                  <textarea
-                    id="overview"
-                    name="overview"
-                    placeholder="Describe your studio, facilities, equipment, atmosphere and what makes it special..."
-                    defaultValue={prefill?.overview ?? ""}
-                    aria-invalid={!!errors.overview}
-                    className={`${fieldClass} min-h-40 resize-none p-4 ${invalid("overview")}`}
-                  />
-                </Field>
-              </Section>
-
-              <Section title="Owner information">
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <Field label="Owner name" htmlFor="ownerName">
-                    <input
-                      id="ownerName"
-                      name="ownerName"
-                      value={user.name ?? ""}
-                      readOnly
-                      className={`${fieldClass} h-11 cursor-not-allowed px-4 opacity-70`}
-                    />
-                  </Field>
-
-                  <Field label="Owner email" htmlFor="ownerEmail">
-                    <input
-                      id="ownerEmail"
-                      name="ownerEmail"
-                      value={user.email ?? ""}
-                      readOnly
-                      className={`${fieldClass} h-11 cursor-not-allowed px-4 opacity-70`}
-                    />
-                  </Field>
-                </div>
-
-                <p className={hintClass}>
-                  Your account information will be associated with this listing.
-                </p>
-              </Section>
-
-              <div className="flex flex-col-reverse gap-3 border-t border-[#1a1410]/10 pt-7 sm:flex-row sm:justify-end dark:border-white/10">
-                <button
-                  type="button"
-                  onClick={() => router.back()}
-                  disabled={submitting}
-                  className={outlineButtonClass}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className={`${buttonClass} sm:min-w-52`}
-                >
-                  {submitting ? (
-                    <Loader2 className="h-[18px] w-[18px] animate-spin" />
-                  ) : isEdit ? (
-                    <Check size={18} />
-                  ) : (
-                    <Plus size={18} />
-                  )}
-
-                  {submitting
-                    ? isEdit
-                      ? "Saving..."
-                      : "Publishing..."
-                    : isEdit
-                      ? "Save Changes"
-                      : "Publish Studio"}
-                </button>
+                <ChevronDown className="absolute right-4 top-3.5 h-4 w-4 text-gray-400" />
               </div>
             </div>
-          </form>
-        )}
+          </section>
+
+          <section className="space-y-5">
+            <h2 className="border-b border-black/10 pb-3 text-sm font-bold uppercase tracking-widest dark:border-white/10">
+              Pricing & Capacity
+            </h2>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label htmlFor="hourlyRate" className={labelClass}>
+                  Hourly Rate ($) *
+                </label>
+
+                <div className="relative">
+                  <DollarSign className="absolute left-4 top-3.5 h-4 w-4 text-gray-400" />
+
+                  <input
+                    id="hourlyRate"
+                    name="hourlyRate"
+                    type="number"
+                    min="1"
+                    required
+                    defaultValue={studio?.hourlyRate ?? ""}
+                    placeholder="50"
+                    className={`${inputClass} pl-11`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="securityDeposit" className={labelClass}>
+                  Security Deposit ($)
+                </label>
+
+                <div className="relative">
+                  <DollarSign className="absolute left-4 top-3.5 h-4 w-4 text-gray-400" />
+
+                  <input
+                    id="securityDeposit"
+                    name="securityDeposit"
+                    type="number"
+                    min="0"
+                    defaultValue={studio?.securityDeposit ?? ""}
+                    placeholder="100"
+                    className={`${inputClass} pl-11`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="maxCapacity" className={labelClass}>
+                  Maximum Capacity *
+                </label>
+
+                <div className="relative">
+                  <Users className="absolute left-4 top-3.5 h-4 w-4 text-gray-400" />
+
+                  <input
+                    id="maxCapacity"
+                    name="maxCapacity"
+                    type="number"
+                    min="1"
+                    required
+                    defaultValue={studio?.maxCapacity ?? ""}
+                    placeholder="20"
+                    className={`${inputClass} pl-11`}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-5">
+            <h2 className="border-b border-black/10 pb-3 text-sm font-bold uppercase tracking-widest dark:border-white/10">
+              Location & Photo
+            </h2>
+
+            <div>
+              <label htmlFor="location" className={labelClass}>
+                Location / Address *
+              </label>
+
+              <div className="relative">
+                <MapPin className="absolute left-4 top-3.5 h-4 w-4 text-gray-400" />
+
+                <input
+                  id="location"
+                  name="location"
+                  required
+                  defaultValue={studio?.location || ""}
+                  placeholder="Enter studio address"
+                  className={`${inputClass} pl-11`}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="image" className={labelClass}>
+                Studio Image URL *
+              </label>
+
+              <div className="relative">
+                <ImageIcon className="absolute left-4 top-3.5 h-4 w-4 text-gray-400" />
+
+                <input
+                  id="image"
+                  name="image"
+                  type="url"
+                  required
+                  defaultValue={studio?.image || ""}
+                  placeholder="https://example.com/image.jpg"
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className={`${inputClass} pl-11`}
+                />
+              </div>
+
+              {imageUrl && (
+                <img
+                  src={imageUrl}
+                  alt="Studio preview"
+                  className="mt-4 h-48 w-full rounded-xl object-cover"
+                />
+              )}
+            </div>
+          </section>
+
+          <section className="space-y-5">
+            <h2 className="border-b border-black/10 pb-3 text-sm font-bold uppercase tracking-widest dark:border-white/10">
+              Studio Amenities
+            </h2>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {amenities.map((amenity) => (
+                <label
+                  key={amenity}
+                  className="flex cursor-pointer items-center gap-2 rounded-xl border border-black/10 p-3 text-sm dark:border-white/10"
+                >
+                  <input
+                    type="checkbox"
+                    name="amenities"
+                    value={amenity}
+                    defaultChecked={
+                      studio?.amenities?.includes(amenity) ?? false
+                    }
+                    className="h-4 w-4 accent-[#B8926F]"
+                  />
+
+                  {amenity}
+                </label>
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-5">
+            <h2 className="border-b border-black/10 pb-3 text-sm font-bold uppercase tracking-widest dark:border-white/10">
+              Detailed Overview
+            </h2>
+
+            <div>
+              <label htmlFor="overview" className={labelClass}>
+                About Your Studio *
+              </label>
+
+              <textarea
+                id="overview"
+                name="overview"
+                required
+                minLength={20}
+                rows={6}
+                defaultValue={studio?.overview || ""}
+                placeholder="Describe your studio, facilities and equipment..."
+                className={inputClass}
+              />
+            </div>
+          </section>
+
+          <section className="space-y-5">
+            <h2 className="border-b border-black/10 pb-3 text-sm font-bold uppercase tracking-widest dark:border-white/10">
+              Owner Information
+            </h2>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label htmlFor="ownerName" className={labelClass}>
+                  Owner Name
+                </label>
+
+                <input
+                  id="ownerName"
+                  value={user.name || ""}
+                  readOnly
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="ownerEmail" className={labelClass}>
+                  Owner Email
+                </label>
+
+                <input
+                  id="ownerEmail"
+                  value={user.email || ""}
+                  readOnly
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </section>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-black/10 pt-7 dark:border-white/10 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              disabled={submitting}
+              className="rounded-full border border-[#8a6a4d] px-8 py-3 text-sm font-bold uppercase tracking-wider"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center justify-center gap-2 rounded-full bg-[#C9A98B] px-8 py-3 text-sm font-bold uppercase tracking-wider text-[#1a1410] disabled:opacity-60"
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus size={18} />
+              )}
+
+              {submitting
+                ? "Saving..."
+                : isEditMode
+                  ? "Update Studio"
+                  : "Publish Studio"}
+            </button>
+          </div>
+
+        </form>
       </div>
     </div>
-  )
+  );
 }
 
-const AddStudioPage = () => (
-  <Suspense
-    fallback={
-      <div className="flex min-h-screen items-center justify-center bg-[#faf8f5] dark:bg-[#0e0b09]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#8a6a4d] dark:text-[#C9A98B]" />
-      </div>
-    }
-  >
-    <AddStudioContent />
-  </Suspense>
-)
-
-export default AddStudioPage
+export default function AddNewStudioPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-7 w-7 animate-spin" />
+        </div>
+      }
+    >
+      <AddStudioForm />
+    </Suspense>
+  );
+}
