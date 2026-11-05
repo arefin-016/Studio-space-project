@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
@@ -18,7 +19,6 @@ import { toast } from "sonner"
 
 import { authClient } from "@/lib/auth-client"
 
-/* ---------- Config ---------- */
 const API_URL = "http://localhost:8000"
 
 const categories = [
@@ -43,7 +43,6 @@ const amenities = [
   "24/7 Access",
 ]
 
-/* ---------- Validation ---------- */
 type FieldName =
   | "title"
   | "category"
@@ -56,7 +55,6 @@ type FieldName =
 
 type Errors = Partial<Record<FieldName, string>>
 
-// Order used to focus the first field with a problem
 const FIELD_ORDER: FieldName[] = [
   "title",
   "category",
@@ -90,7 +88,6 @@ const validate = (v: Record<FieldName, string>): Errors => {
   else if (Number(v.hourlyRate) <= 0)
     errors.hourlyRate = "Enter a rate greater than 0."
 
-  // Security deposit is optional, but if filled it must not be negative
   if (v.securityDeposit && Number(v.securityDeposit) < 0)
     errors.securityDeposit = "Deposit can't be negative."
 
@@ -116,9 +113,6 @@ const validate = (v: Record<FieldName, string>): Errors => {
   return errors
 }
 
-/* ---------- Edit mode ---------- */
-// Existing studio data, normalised into the form's field names
-// (older documents used name / price / description / capacity).
 type Prefill = {
   ownerEmail: string
   title: string
@@ -132,7 +126,6 @@ type Prefill = {
   overview: string
 }
 
-/* ---------- Shared styles (light + dark, same as Sign In / Sign Up) ---------- */
 const labelClass =
   "mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] " +
   "text-[#3d3228]/75 dark:text-white/70"
@@ -153,13 +146,10 @@ const iconClass =
   "pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 " +
   "text-[#1a1410]/40 dark:text-white/40"
 
-// Dropdown options need solid colors: the select itself is semi-transparent in dark
-// mode, and browsers paint the open list on white, which hid the white option text.
 const optionClass = "bg-white text-[#1a1410] dark:bg-[#1a1511] dark:text-white"
 
 const hintClass = "mt-2 text-xs text-[#1a1410]/50 dark:text-white/45"
 
-// Tan pill (same as "Sign Up" in the navbar)
 const buttonClass =
   "flex h-11 items-center justify-center gap-2 rounded-full bg-[#C9A98B] px-8 " +
   "text-sm font-bold uppercase tracking-[0.18em] text-[#1a1410] transition " +
@@ -168,14 +158,12 @@ const buttonClass =
   "focus-visible:ring-offset-white dark:focus-visible:ring-offset-black " +
   "disabled:cursor-not-allowed disabled:opacity-60"
 
-// Outlined pill (same idea as "Host your space" on the hero)
 const outlineButtonClass =
   "flex h-11 items-center justify-center rounded-full border border-[#8a6a4d]/60 px-8 " +
   "text-sm font-bold uppercase tracking-[0.18em] text-[#3d3228] transition " +
   "hover:bg-[#C9A98B]/15 dark:border-[#C9A98B]/60 dark:text-white " +
   "disabled:cursor-not-allowed disabled:opacity-60"
 
-/* ---------- Small building blocks ---------- */
 const Field = ({
   label,
   htmlFor,
@@ -196,7 +184,9 @@ const Field = ({
       {label}
       {required && <span className="ml-1 text-red-500">*</span>}
     </label>
+
     {children}
+
     {error ? (
       <p
         role="alert"
@@ -222,16 +212,18 @@ const Section = ({
       <span className="h-px w-6 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
       {title}
     </h2>
+
     <div className="space-y-5">{children}</div>
   </section>
 )
 
-/* ---------- Page ---------- */
 const AddStudioContent = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
+
   const editId = searchParams.get("edit")
   const isEdit = Boolean(editId)
+
   const { data: session, isPending } = authClient.useSession()
   const user = session?.user
 
@@ -242,7 +234,6 @@ const AddStudioContent = () => {
   const [prefill, setPrefill] = useState<Prefill | null>(null)
   const [editLoading, setEditLoading] = useState(isEdit)
 
-  // Edit mode: fetch the existing studio and fill the form with it
   useEffect(() => {
     if (!editId) return
 
@@ -282,9 +273,11 @@ const AddStudioContent = () => {
         if (cancelled) return
 
         setEditLoading(false)
+
         toast.error("Couldn't load this studio", {
           description: "Please try again in a moment.",
         })
+
         router.back()
       }
     }
@@ -298,9 +291,9 @@ const AddStudioContent = () => {
 
   const invalid = (name: FieldName) => (errors[name] ? errorFieldClass : "")
 
-  // Clear a field's error as soon as the user edits it
   const handleChange = (e: React.ChangeEvent<HTMLFormElement>) => {
     const name = e.target.name as FieldName
+
     if (name && errors[name]) {
       setErrors((prev) => {
         const next = { ...prev }
@@ -312,9 +305,12 @@ const AddStudioContent = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!user) return
 
-    // Keep a reference: e.currentTarget is cleared after the first await
+    if (!user) {
+      toast.error("Please sign in first")
+      return
+    }
+
     const formEl = e.currentTarget
     const form = new FormData(formEl)
 
@@ -329,11 +325,11 @@ const AddStudioContent = () => {
       overview: String(form.get("overview") ?? "").trim(),
     }
 
-    /* ----- Validate ----- */
     const found = validate(values)
     setErrors(found)
 
     const problems = Object.keys(found).length
+
     if (problems > 0) {
       toast.error("Please complete the form", {
         description: `${problems} ${
@@ -342,13 +338,14 @@ const AddStudioContent = () => {
       })
 
       const first = FIELD_ORDER.find((key) => found[key])
+
       if (first) {
         ;(formEl.elements.namedItem(first) as HTMLElement | null)?.focus()
       }
+
       return
     }
 
-    /* ----- Submit ----- */
     const payload = {
       title: values.title,
       category: values.category,
@@ -357,39 +354,52 @@ const AddStudioContent = () => {
       maxCapacity: Number(values.maxCapacity),
       location: values.location,
       image: values.image,
-      // getAll keeps every ticked amenity (Object.fromEntries would keep only the last one)
       amenities: form.getAll("amenities").map(String),
       overview: values.overview,
       ownerName: user.name,
       ownerEmail: user.email,
     }
 
-    // The studio's owner email (falls back to the signed-in user)
     const ownerEmail = prefill?.ownerEmail || user.email
 
     setSubmitting(true)
 
     try {
+      // Get JWT token from Better Auth
+      const { data: tokenData, error: tokenError } =
+        await authClient.token()
+
+      if (tokenError || !tokenData?.token) {
+        throw new Error(
+          "Authentication token not found. Please sign in again."
+        )
+      }
+
+      const jwtToken = tokenData.token
+
       const res = await fetch(
         isEdit
           ? `${API_URL}/studios/${encodeURIComponent(ownerEmail)}`
           : `${API_URL}/addStudio`,
         {
           method: isEdit ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            authorization: `Bearer ${jwtToken}`,
+          },
           body: JSON.stringify(payload),
         }
       )
 
       const result = await res.json().catch(() => null)
 
-      // 409 = this email already has a studio (sent by the backend)
       if (res.status === 409) {
         toast.error("Studio already added", {
           description:
             result?.message ??
             "You have already listed a studio with this email.",
         })
+
         return
       }
 
@@ -407,8 +417,10 @@ const AddStudioContent = () => {
           description: "Your changes have been saved.",
         })
 
-        // Back to the owner dashboard, which reloads the list
-        router.push(`/studioes/owner/${encodeURIComponent(ownerEmail)}`)
+        router.push(
+          `/studioes/owner/${encodeURIComponent(ownerEmail)}`
+        )
+
         return
       }
 
@@ -416,14 +428,13 @@ const AddStudioContent = () => {
         description: "Your studio was submitted successfully.",
       })
 
-      // Refresh the form after a successful submission
       formEl.reset()
       setErrors({})
       setImageUrl("")
       setImageFailed(false)
+
       window.scrollTo({ top: 0, behavior: "smooth" })
     } catch (err) {
-      // fetch() throws a TypeError when the server can't be reached at all
       toast.error(
         err instanceof TypeError
           ? "Can't reach the server. Make sure your backend is running."
@@ -436,8 +447,6 @@ const AddStudioContent = () => {
     }
   }
 
-  // Keep values the studio already has, even when they are not in the
-  // default option lists (seeded documents use different labels).
   const categoryOptions = prefill?.category
     ? categories.some((c) => c.value === prefill.category)
       ? categories
@@ -456,9 +465,7 @@ const AddStudioContent = () => {
   ]
 
   return (
-    /* pt-28 clears the fixed navbar */
     <div className="relative min-h-[100dvh] bg-[#faf8f5] px-4 pt-28 pb-16 text-[#1a1410] sm:px-6 dark:bg-[#0e0b09] dark:text-white">
-      {/* soft tan glow behind the card */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -469,29 +476,28 @@ const AddStudioContent = () => {
       />
 
       <div className="relative mx-auto w-full max-w-3xl">
-        {/* Loading session or the studio being edited */}
         {(isPending || editLoading) && (
           <div className="flex justify-center py-24">
             <Loader2 className="h-6 w-6 animate-spin text-[#8a6a4d] dark:text-[#C9A98B]" />
           </div>
         )}
 
-        {/* Not signed in */}
         {!isPending && !editLoading && !user && (
           <div className="mx-auto max-w-md rounded-2xl border border-[#1a1410]/10 bg-white p-8 text-center shadow-xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none">
             <h1 className="text-3xl font-extrabold tracking-tight uppercase">
               Sign in first
             </h1>
+
             <p className="mt-3 text-sm text-[#3d3228]/70 dark:text-white/60">
               You need an account to list your studio.
             </p>
+
             <Link href="/signIn" className={`${buttonClass} mt-6`}>
               Sign In
             </Link>
           </div>
         )}
 
-        {/* Form */}
         {!isPending && !editLoading && user && (
           <form
             onSubmit={handleSubmit}
@@ -499,10 +505,10 @@ const AddStudioContent = () => {
             noValidate
             className="rounded-2xl border border-[#1a1410]/10 bg-white p-6 shadow-xl sm:p-10 dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none"
           >
-            {/* Header */}
             <div className="mb-9">
               <div className="mb-3 flex items-center gap-3">
                 <span className="h-px w-8 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
+
                 <span className="text-xs font-semibold tracking-[0.3em] text-[#8a6a4d] uppercase dark:text-[#C9A98B]">
                   {isEdit ? "Edit listing" : "Host your space"}
                 </span>
@@ -531,7 +537,6 @@ const AddStudioContent = () => {
             </div>
 
             <div className="space-y-8">
-              {/* The basics */}
               <Section title="The basics">
                 <Field
                   label="Studio title"
@@ -541,6 +546,7 @@ const AddStudioContent = () => {
                 >
                   <div className="relative">
                     <Type className={iconClass} />
+
                     <input
                       id="title"
                       name="title"
@@ -570,6 +576,7 @@ const AddStudioContent = () => {
                       <option value="" disabled className={optionClass}>
                         Choose studio category
                       </option>
+
                       {categoryOptions.map((c) => (
                         <option
                           key={c.value}
@@ -580,12 +587,12 @@ const AddStudioContent = () => {
                         </option>
                       ))}
                     </select>
+
                     <ChevronDown className="pointer-events-none absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 text-[#1a1410]/50 dark:text-white/50" />
                   </div>
                 </Field>
               </Section>
 
-              {/* Pricing and capacity */}
               <Section title="Pricing & capacity">
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field
@@ -596,6 +603,7 @@ const AddStudioContent = () => {
                   >
                     <div className="relative">
                       <DollarSign className={iconClass} />
+
                       <input
                         id="hourlyRate"
                         name="hourlyRate"
@@ -616,6 +624,7 @@ const AddStudioContent = () => {
                   >
                     <div className="relative">
                       <DollarSign className={iconClass} />
+
                       <input
                         id="securityDeposit"
                         name="securityDeposit"
@@ -636,6 +645,7 @@ const AddStudioContent = () => {
                   >
                     <div className="relative">
                       <Users className={iconClass} />
+
                       <input
                         id="maxCapacity"
                         name="maxCapacity"
@@ -650,7 +660,6 @@ const AddStudioContent = () => {
                 </div>
               </Section>
 
-              {/* Location and photo */}
               <Section title="Location & photo">
                 <Field
                   label="Location / address"
@@ -660,6 +669,7 @@ const AddStudioContent = () => {
                 >
                   <div className="relative">
                     <MapPin className={iconClass} />
+
                     <input
                       id="location"
                       name="location"
@@ -681,6 +691,7 @@ const AddStudioContent = () => {
                 >
                   <div className="relative">
                     <ImageIcon className={iconClass} />
+
                     <input
                       id="image"
                       name="image"
@@ -697,7 +708,6 @@ const AddStudioContent = () => {
                   </div>
 
                   {imageUrl && !imageFailed && (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={imageUrl}
                       alt="Studio preview"
@@ -708,7 +718,6 @@ const AddStudioContent = () => {
                 </Field>
               </Section>
 
-              {/* Amenities */}
               <Section title="Studio amenities">
                 <p className="-mt-2 text-sm text-[#3d3228]/70 dark:text-white/60">
                   Select all facilities available in your studio.
@@ -726,6 +735,7 @@ const AddStudioContent = () => {
                         }
                         className="peer sr-only"
                       />
+
                       <span
                         className={
                           "flex h-full items-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors " +
@@ -742,14 +752,16 @@ const AddStudioContent = () => {
                           className="shrink-0 text-[#8a6a4d] transition-opacity dark:text-[#C9A98B]"
                           aria-hidden="true"
                         />
-                        <span className="min-w-0 break-words">{amenity}</span>
+
+                        <span className="min-w-0 break-words">
+                          {amenity}
+                        </span>
                       </span>
                     </label>
                   ))}
                 </div>
               </Section>
 
-              {/* Overview */}
               <Section title="Detailed overview">
                 <Field
                   label="About your studio"
@@ -769,7 +781,6 @@ const AddStudioContent = () => {
                 </Field>
               </Section>
 
-              {/* Owner */}
               <Section title="Owner information">
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field label="Owner name" htmlFor="ownerName">
@@ -798,7 +809,6 @@ const AddStudioContent = () => {
                 </p>
               </Section>
 
-              {/* Buttons */}
               <div className="flex flex-col-reverse gap-3 border-t border-[#1a1410]/10 pt-7 sm:flex-row sm:justify-end dark:border-white/10">
                 <button
                   type="button"
@@ -821,6 +831,7 @@ const AddStudioContent = () => {
                   ) : (
                     <Plus size={18} />
                   )}
+
                   {submitting
                     ? isEdit
                       ? "Saving..."
@@ -838,7 +849,6 @@ const AddStudioContent = () => {
   )
 }
 
-/* ---------- Suspense Wrapper ---------- */
 const AddStudioPage = () => (
   <Suspense
     fallback={

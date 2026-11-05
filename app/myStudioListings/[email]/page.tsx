@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner"
 
 import { authClient } from "@/lib/auth-client"
+import { getTokenClient } from "@/lib/getTokenFromClient";
 
 const API_URL = "http://localhost:8000"
 
@@ -276,10 +277,16 @@ const MyStudioListingsPage = () => {
   >(null)
 
   const load = useCallback(async () => {
+	const jwtToken=await getTokenClient()
     try {
       const res = await fetch(
         `${API_URL}/bookedStudio/${encodeURIComponent(email)}`,
-        { cache: "no-store" }
+        {
+			headers:{
+				authorization:`Bearer ${jwtToken}`
+			}
+
+		}
       )
 
       if (!res.ok) throw new Error("Failed to load")

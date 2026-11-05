@@ -22,6 +22,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { getTokenClient } from "@/lib/getTokenFromClient";
+
+
 
 const API_URL = "http://localhost:8000"
 
@@ -96,8 +99,12 @@ const Thumb = () => (
 
 // ---------- Page ----------
 const Page = ({ params }: { params: Promise<{ email: string }> }) => {
+
   const { email } = use(params)
   const router = useRouter()
+
+
+
 
   const decodedEmail = decodeURIComponent(email)
 
@@ -108,10 +115,17 @@ const Page = ({ params }: { params: Promise<{ email: string }> }) => {
 
   // Fetch only — callers decide how to store the result
   const fetchStudios = useCallback(async (): Promise<Studio[]> => {
+	const jwtToken=await getTokenClient()
     try {
       const res = await fetch(
         `${API_URL}/myStudioes/${encodeURIComponent(decodedEmail)}`,
-        { cache: "no-store" }
+
+		{
+			headers:{
+				authorization:`Bearer ${jwtToken}`
+			}
+		},
+
       )
       const data = res.ok ? await res.json() : []
       return Array.isArray(data) ? (data as Studio[]) : []
