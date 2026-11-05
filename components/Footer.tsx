@@ -7,9 +7,9 @@ import { authClient } from "@/lib/auth-client"
 
 const exploreLinks = [
   { href: "/", label: "Home" },
-  { href: "/studios", label: "Explore Studios" },
-  { href: "/how-it-works", label: "How It Works" },
-  { href: "/about", label: "About Us" },
+  { href: "/studioes", label: "Explore Studios" },
+ { href: "/#how-it-works", label: "How It Works" },
+  { href: "/#about-us", label: "About Us" },
 ]
 
 // Column heading: same wide-tracked tan label used across the site

@@ -18,6 +18,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Only these routes need a logged-in user
-  matcher: ["/myStudioListings/:path*", "/my-booking-requests"],
-}
+
+  matcher: ["/myStudioListings/:path*", "/my-booking-requests",  "/studioes/owner/:path*"]}

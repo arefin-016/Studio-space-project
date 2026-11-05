@@ -276,7 +276,7 @@ const Page = ({ params }: { params: Promise<{ email: string }> }) => {
                       {studio.category}
                     </td>
                     <td className="px-6 py-4 text-sm font-black text-neutral-900 dark:text-white">
-                      ৳
+                      $
                       {Number(
                         studio.hourlyRate ?? studio.price ?? 0
                       ).toLocaleString()}

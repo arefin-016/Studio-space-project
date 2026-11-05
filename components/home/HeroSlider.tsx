@@ -45,8 +45,8 @@ const slides: HeroSlide[] = [
     headline: ["Find Your", "Creative Space"],
     description:
       "Discover inspiring studios and production spaces designed to bring your creative ideas to life.",
-    primaryCta: { label: "Explore Studios", href: "/studios" },
-    secondaryCta: { label: "Host Your Space", href: "/studios" },
+    primaryCta: { label: "Explore Studios", href: "/studioes" },
+    secondaryCta: { label: "Host Your Space", href: "/AddNewStudio" },
   },
   {
     id: "your-vision",

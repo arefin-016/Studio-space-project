@@ -70,13 +70,7 @@ const AboutUs = () => {
             click to the last shot.
           </p>
 
-          <Link
-            href="/studios"
-            className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#C9A98B] px-8 text-xs font-bold tracking-[0.18em] text-[#1a1410] uppercase transition hover:bg-[#D8BDA2] focus-visible:ring-2 focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none dark:focus-visible:ring-offset-black"
-          >
-            Find a Studio
-            <ArrowRight size={16} aria-hidden="true" />
-          </Link>
+          
         </div>
 
         {/* Right: guarantees */}
