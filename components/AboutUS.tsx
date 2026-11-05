@@ -1,11 +1,11 @@
-import Link from "next/link";
+import Link from "next/link"
 import {
   ArrowRight,
   BadgeCheck,
   Headset,
   ShieldCheck,
   Wrench,
-} from "lucide-react";
+} from "lucide-react"
 
 const guarantees = [
   {
@@ -32,12 +32,14 @@ const guarantees = [
     description:
       "Stuck at the door, or need a last-minute change? Our support team is available around the clock to help you and your host.",
   },
-];
+]
 
 const AboutUs = () => {
   return (
-    <section className="relative scroll-mt-24 overflow-hidden bg-white px-4 py-20 text-[#1a1410] dark:bg-[#0a0806] dark:text-white sm:px-6 sm:py-28" id="about-us"
-  >
+    <section
+      className="relative scroll-mt-24 overflow-hidden bg-white px-4 py-20 text-[#1a1410] sm:px-6 sm:py-28 dark:bg-[#0a0806] dark:text-white"
+      id="about-us"
+    >
       {/* soft tan glow */}
       <div
         aria-hidden
@@ -53,16 +55,16 @@ const AboutUs = () => {
         <div className="lg:col-span-2">
           <div className="mb-4 flex items-center gap-3">
             <span className="h-px w-8 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
-            <span className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8a6a4d] dark:text-[#C9A98B]">
+            <span className="text-xs font-semibold tracking-[0.3em] text-[#8a6a4d] uppercase dark:text-[#C9A98B]">
               Host guarantee
             </span>
           </div>
 
-          <h2 className="text-3xl font-extrabold uppercase tracking-tight sm:text-5xl">
+          <h2 className="text-3xl font-extrabold tracking-tight uppercase sm:text-5xl">
             Create with confidence
           </h2>
 
-          <p className="mt-5 text-sm leading-relaxed text-[#3d3228]/70 dark:text-white/60 sm:text-base">
+          <p className="mt-5 text-sm leading-relaxed text-[#3d3228]/70 sm:text-base dark:text-white/60">
             Whether you are booking a space or sharing your own, StudioSpace is
             built so both sides feel protected and supported from the first
             click to the last shot.
@@ -70,7 +72,7 @@ const AboutUs = () => {
 
           <Link
             href="/studios"
-            className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#C9A98B] px-8 text-xs font-bold uppercase tracking-[0.18em] text-[#1a1410] transition hover:bg-[#D8BDA2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-black"
+            className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#C9A98B] px-8 text-xs font-bold tracking-[0.18em] text-[#1a1410] uppercase transition hover:bg-[#D8BDA2] focus-visible:ring-2 focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none dark:focus-visible:ring-offset-black"
           >
             Find a Studio
             <ArrowRight size={16} aria-hidden="true" />
@@ -88,7 +90,7 @@ const AboutUs = () => {
                 <item.icon size={22} aria-hidden="true" />
               </span>
 
-              <h3 className="mt-5 text-lg font-extrabold uppercase tracking-tight">
+              <h3 className="mt-5 text-lg font-extrabold tracking-tight uppercase">
                 {item.title}
               </h3>
 
@@ -100,7 +102,7 @@ const AboutUs = () => {
         </ul>
       </div>
     </section>
-  );
-};
+  )
+}
 
-export default AboutUs;
+export default AboutUs

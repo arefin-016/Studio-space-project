@@ -4,7 +4,14 @@ import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CalendarCheck, LogOut, Plus, User } from "lucide-react"
+import {
+  Building2,
+  CalendarCheck,
+  Inbox,
+  LogOut,
+  Plus,
+  User,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -115,7 +122,7 @@ const PopOver = () => {
         <PopoverHeader className="gap-0 px-5 pt-5 pb-4">
           <div className="mb-4 flex items-center gap-3">
             <span className="h-px w-8 bg-sand-deep dark:bg-sand" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sand-deep dark:text-sand">
+            <span className="text-[11px] font-semibold tracking-[0.3em] text-sand-deep uppercase dark:text-sand">
               Signed in
             </span>
           </div>
@@ -152,6 +159,17 @@ const PopOver = () => {
           </Link>
 
           <Link
+            href={`/studioes/owner/${encodeURIComponent(user.email)}`}
+            onClick={() => setOpen(false)}
+            className={rowClasses}
+          >
+            <span className={iconBadgeClasses}>
+              <Building2 size={14} aria-hidden="true" />
+            </span>
+            My Studio Listings
+          </Link>
+
+          <Link
             href={`/myStudioListings/${encodeURIComponent(user.email)}`}
             onClick={() => setOpen(false)}
             className={rowClasses}
@@ -159,7 +177,18 @@ const PopOver = () => {
             <span className={iconBadgeClasses}>
               <CalendarCheck size={14} aria-hidden="true" />
             </span>
-            My Studio Listings
+            My Bookings
+          </Link>
+
+          <Link
+            href="/my-booking-requests"
+            onClick={() => setOpen(false)}
+            className={rowClasses}
+          >
+            <span className={iconBadgeClasses}>
+              <Inbox size={14} aria-hidden="true" />
+            </span>
+            Booking Requests
           </Link>
         </div>
 

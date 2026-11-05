@@ -1,54 +1,51 @@
-import Image from "next/image";
-import Link from "next/link";
-import { MapPin, Star, ArrowUpRight } from "lucide-react";
+import Image from "next/image"
+import Link from "next/link"
+import { MapPin, Star, ArrowUpRight } from "lucide-react"
 
 interface Studio {
-  _id: string;
-  name: string;
-  category: string;
-  hourlyRate: number;
-  location: string;
-  rating: number;
-  image: string;
+  _id: string
+  title: string
+  category: string
+  hourlyRate: number
+  location: string
+  rating: number
+  image: string
 }
 
-const API_URL = "http://localhost:8000";
+const API_URL = "http://localhost:8000"
 
 const getStudios = async (): Promise<Studio[]> => {
   try {
     const res = await fetch(`${API_URL}/getStudios`, {
       cache: "no-store",
-    });
+    })
 
-    if (!res.ok) return [];
+    if (!res.ok) return []
 
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+    const data = await res.json()
+    return Array.isArray(data) ? data : []
   } catch {
-    return [];
+    return []
   }
-};
+}
 
 const AllStudio = async () => {
-  const studios = await getStudios();
+  const studios = await getStudios()
 
   return (
-    <section className="bg-[#faf8f5] px-4 py-16 text-[#1a1410] dark:bg-[#0e0b09] dark:text-white sm:px-6 sm:py-20 lg:px-8">
+    <section className="bg-[#faf8f5] px-4 py-16 text-[#1a1410] sm:px-6 sm:py-20 lg:px-8 dark:bg-[#0e0b09] dark:text-white">
       <div className="mx-auto max-w-7xl">
-
         {/* Heading */}
         <div className="mb-10 sm:mb-12">
-          <div className="mb-3 flex items-center gap-3">
+          <div className="mb-3 flex items-center gap-3"></div>
 
-
-          </div>
-
-          <h2 className="text-3xl font-extrabold uppercase tracking-tight sm:text-5xl">
+          <h2 className="text-3xl font-extrabold tracking-tight uppercase sm:text-5xl">
             Explore Studio Spaces
           </h2>
 
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#3d3228]/70 dark:text-white/60">
-            Fresh listings from hosts near you. Compare rates and lock your slot.
+            Fresh listings from hosts near you. Compare rates and lock your
+            slot.
           </p>
         </div>
 
@@ -64,34 +61,38 @@ const AllStudio = async () => {
                 <div className="relative h-56 overflow-hidden">
                   <Image
                     src={studio.image}
-                    alt={studio.name}
+                    alt={studio.title}
                     fill
                     className="object-cover transition duration-500 group-hover:scale-105"
                   />
 
                   {/* Category Badge */}
-                  <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-[#8a6a4d] shadow-sm">
+                  <span className="absolute top-4 left-4 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-[#8a6a4d] shadow-sm">
                     {studio.category}
                   </span>
 
                   {/* Rating Badge */}
-                  <span className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-[#1a1410] shadow-sm">
-                    <Star size={13} className="fill-yellow-400 text-yellow-400" />
+                  <span className="absolute top-4 right-4 flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-[#1a1410] shadow-sm">
+                    <Star
+                      size={13}
+                      className="fill-yellow-400 text-yellow-400"
+                    />
                     {studio.rating ?? "New"}
                   </span>
                 </div>
 
                 {/* Studio Information */}
                 <div className="p-5">
-
                   <h3 className="line-clamp-1 text-xl font-bold">
-                    {studio.name}
+                    {studio.title}
                   </h3>
 
                   {/* Location */}
-                  <p className="mt-2 flex items-center gap-2 text-sm text-[#3d3228]/60 dark:text-white/60">
-                    <MapPin size={16} />
-                    {studio.location}
+                  <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[#3d3228]/60 dark:text-white/60">
+                    <MapPin size={16} className="shrink-0" />
+                    <span className="min-w-0 break-words">
+                      {studio.location}
+                    </span>
                   </p>
 
                   {/* Price and Button */}
@@ -100,7 +101,8 @@ const AllStudio = async () => {
                       <p className="text-xl font-extrabold text-[#8a6a4d] dark:text-[#C9A98B]">
                         ${studio.hourlyRate}
                         <span className="text-sm font-medium text-gray-500">
-                          {" "} / hr
+                          {" "}
+                          / hr
                         </span>
                       </p>
                     </div>
@@ -118,10 +120,9 @@ const AllStudio = async () => {
             ))}
           </div>
         ) : (
-
           /* Empty State */
           <div className="rounded-2xl border border-dashed border-[#1a1410]/20 px-6 py-16 text-center dark:border-white/15">
-            <h3 className="text-lg font-extrabold uppercase tracking-tight">
+            <h3 className="text-lg font-extrabold tracking-tight uppercase">
               No Studios to Show Yet
             </h3>
 
@@ -132,7 +133,7 @@ const AllStudio = async () => {
         )}
       </div>
     </section>
-  );
-};
+  )
+}
 
-export default AllStudio;
+export default AllStudio

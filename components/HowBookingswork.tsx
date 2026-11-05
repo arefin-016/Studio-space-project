@@ -1,11 +1,11 @@
-import Link from "next/link";
+import Link from "next/link"
 import {
   ArrowRight,
   Aperture,
   CalendarCheck,
   Clock,
   Search,
-} from "lucide-react";
+} from "lucide-react"
 
 const steps = [
   {
@@ -36,12 +36,14 @@ const steps = [
     description:
       "Show up and make your best work. Plans changed? Update the time or cancel anytime from My Studio Bookings.",
   },
-];
+]
 
 const HowBookingWorks = () => {
   return (
-    <section className="relative bg-[#faf8f5] px-4 py-20 text-[#1a1410] dark:bg-[#0e0b09] dark:text-white scroll-mt-24 sm:px-6 sm:py-28  " id="how-it-works"
-  >
+    <section
+      className="relative scroll-mt-24 bg-[#faf8f5] px-4 py-20 text-[#1a1410] sm:px-6 sm:py-28 dark:bg-[#0e0b09] dark:text-white"
+      id="how-it-works"
+    >
       {/* soft tan glow */}
       <div
         aria-hidden
@@ -57,17 +59,17 @@ const HowBookingWorks = () => {
         <div className="mx-auto max-w-2xl text-center">
           <div className="mb-4 flex items-center justify-center gap-3">
             <span className="h-px w-8 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
-            <span className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8a6a4d] dark:text-[#C9A98B]">
+            <span className="text-xs font-semibold tracking-[0.3em] text-[#8a6a4d] uppercase dark:text-[#C9A98B]">
               How booking works
             </span>
             <span className="h-px w-8 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
           </div>
 
-          <h2 className="text-3xl font-extrabold uppercase tracking-tight sm:text-5xl">
+          <h2 className="text-3xl font-extrabold tracking-tight uppercase sm:text-5xl">
             From idea to studio in 4 steps
           </h2>
 
-          <p className="mt-4 text-sm leading-relaxed text-[#3d3228]/70 dark:text-white/60 sm:text-base">
+          <p className="mt-4 text-sm leading-relaxed text-[#3d3228]/70 sm:text-base dark:text-white/60">
             Find the right space, choose your hours, and book it in minutes.
             Then get back to creating.
           </p>
@@ -78,7 +80,7 @@ const HowBookingWorks = () => {
           {/* connecting line (desktop only) */}
           <div
             aria-hidden
-            className="absolute left-[12.5%] right-[12.5%] top-[3.25rem] hidden h-px bg-gradient-to-r from-transparent via-[#C9A98B]/60 to-transparent lg:block"
+            className="absolute top-[3.25rem] right-[12.5%] left-[12.5%] hidden h-px bg-gradient-to-r from-transparent via-[#C9A98B]/60 to-transparent lg:block"
           />
 
           {steps.map((step) => (
@@ -96,7 +98,7 @@ const HowBookingWorks = () => {
                 </span>
               </div>
 
-              <h3 className="mt-6 text-lg font-extrabold uppercase tracking-tight">
+              <h3 className="mt-6 text-lg font-extrabold tracking-tight uppercase">
                 {step.title}
               </h3>
 
@@ -111,7 +113,7 @@ const HowBookingWorks = () => {
         <div className="mt-14 text-center">
           <Link
             href="/studios"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#C9A98B] px-8 text-xs font-bold uppercase tracking-[0.18em] text-[#1a1410] transition hover:bg-[#D8BDA2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-black"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#C9A98B] px-8 text-xs font-bold tracking-[0.18em] text-[#1a1410] uppercase transition hover:bg-[#D8BDA2] focus-visible:ring-2 focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none dark:focus-visible:ring-offset-black"
           >
             Explore Studios
             <ArrowRight size={16} aria-hidden="true" />
@@ -119,7 +121,7 @@ const HowBookingWorks = () => {
         </div>
       </div>
     </section>
-  );
-};
+  )
+}
 
-export default HowBookingWorks;
+export default HowBookingWorks

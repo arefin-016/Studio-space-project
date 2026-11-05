@@ -1,27 +1,27 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { Aperture } from "lucide-react";
+import Link from "next/link"
+import { Aperture } from "lucide-react"
 
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client"
 
 const exploreLinks = [
   { href: "/", label: "Home" },
   { href: "/studios", label: "Explore Studios" },
   { href: "/how-it-works", label: "How It Works" },
   { href: "/about", label: "About Us" },
-];
+]
 
 // Column heading: same wide-tracked tan label used across the site
 const headingClass =
-  "mb-5 text-xs font-semibold uppercase tracking-[0.3em] text-[#8a6a4d] dark:text-[#C9A98B]";
+  "mb-5 text-xs font-semibold uppercase tracking-[0.3em] text-[#8a6a4d] dark:text-[#C9A98B]"
 
 const linkClass =
-  "text-sm text-[#3d3228]/75 transition-colors hover:text-[#1a1410] dark:text-white/65 dark:hover:text-white";
+  "text-sm text-[#3d3228]/75 transition-colors hover:text-[#1a1410] dark:text-white/65 dark:hover:text-white"
 
 const Footer = () => {
-  const { data: session } = authClient.useSession();
-  const user = session?.user;
+  const { data: session } = authClient.useSession()
+  const user = session?.user
 
   return (
     <footer className="border-t border-[#1a1410]/10 bg-[#faf8f5] text-[#1a1410] dark:border-white/10 dark:bg-[#0e0b09] dark:text-white">
@@ -46,7 +46,7 @@ const Footer = () => {
 
             <Link
               href={user ? "/AddNewStudio" : "/signUp"}
-              className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#C9A98B] px-7 text-xs font-bold uppercase tracking-[0.18em] text-[#1a1410] transition hover:bg-[#D8BDA2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 focus-visible:ring-offset-[#faf8f5] dark:focus-visible:ring-offset-[#0e0b09]"
+              className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-[#C9A98B] px-7 text-xs font-bold tracking-[0.18em] text-[#1a1410] uppercase transition hover:bg-[#D8BDA2] focus-visible:ring-2 focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 focus-visible:ring-offset-[#faf8f5] focus-visible:outline-none dark:focus-visible:ring-offset-[#0e0b09]"
             >
               Host your space
             </Link>
@@ -96,13 +96,13 @@ const Footer = () => {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 flex flex-col gap-2 border-t border-[#1a1410]/10 pt-6 text-xs text-[#1a1410]/50 dark:border-white/10 dark:text-white/40 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 flex flex-col gap-2 border-t border-[#1a1410]/10 pt-6 text-xs text-[#1a1410]/50 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:text-white/40">
           <p>© 2026 StudioSpace. All rights reserved.</p>
           <p>Book creative spaces, by the hour.</p>
         </div>
       </div>
     </footer>
-  );
-};
+  )
+}
 
-export default Footer;
+export default Footer

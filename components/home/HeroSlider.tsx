@@ -139,7 +139,7 @@ export function HeroSlider() {
         pagination={{ clickable: true }}
         navigation={{ prevEl: ".hero-nav-prev", nextEl: ".hero-nav-next" }}
         keyboard={{ enabled: true }}
-        className="hero-slider h-svh min-h-[640px] w-full"
+        className="hero-slider h-svh min-h-[560px] w-full"
       >
         {slides.map((slide, index) => (
           <SwiperSlide key={slide.id}>
@@ -183,7 +183,7 @@ export function HeroSlider() {
               className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/40 opacity-0 transition-opacity duration-500 dark:opacity-100"
             />
             {/* Slide content — left aligned */}
-            <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-center gap-5 px-4 pt-24 pb-32 text-left sm:px-6 sm:pb-36 lg:px-8 lg:pb-28">
+            <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-center gap-5 px-4 pt-24 pb-24 text-left sm:px-6 sm:pb-36 lg:px-8 lg:pb-28">
               <p className="hero-anim hero-delay-1 flex items-center gap-3 text-xs font-semibold tracking-[0.3em] text-sand-deep uppercase sm:text-sm dark:text-sand">
                 <span
                   aria-hidden="true"

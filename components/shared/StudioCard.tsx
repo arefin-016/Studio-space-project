@@ -1,22 +1,22 @@
-import Image from "next/image";
-import Link from "next/link";
-import { Aperture, MapPin, Star } from "lucide-react";
+import Image from "next/image"
+import Link from "next/link"
+import { Aperture, MapPin, Star } from "lucide-react"
 
 export type Studio = {
-  _id: string;
-  title: string;
-  image?: string;
-  category?: string;
-  hourlyRate: string | number;
-  location: string;
-  rating?: string | number;
-  maxCapacity?: string | number;
-  amenities?: string | string[];
-  overview?: string;
-  ownerName?: string;
-  ownerEmail?: string;
-  securityDeposit?: string | number;
-};
+  _id: string
+  title: string
+  image?: string
+  category?: string
+  hourlyRate: string | number
+  location: string
+  rating?: string | number
+  maxCapacity?: string | number
+  amenities?: string | string[]
+  overview?: string
+  ownerName?: string
+  ownerEmail?: string
+  securityDeposit?: string | number
+}
 
 const categoryLabels: Record<string, string> = {
   "photo-studio": "Photo Studio",
@@ -25,28 +25,30 @@ const categoryLabels: Record<string, string> = {
   "music-suite": "Music Suite",
   workshop: "Workshop",
   other: "Other",
-};
+}
 
 // "podcast-lounge" -> "Podcast Lounge"; missing category -> "Studio"
 const toCategoryLabel = (value?: string) => {
-  if (!value) return "Studio";
+  if (!value) return "Studio"
   return (
     categoryLabels[value] ??
     value.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  );
-};
+  )
+}
 
 const StudioCard = ({ studio }: { studio?: Studio }) => {
   // The card needs the whole studio object in a prop called `studio`
   if (!studio) {
-    console.error("StudioCard: the `studio` prop is missing. Use <StudioCard studio={item} />");
-    return null;
+    console.error(
+      "StudioCard: the `studio` prop is missing. Use <StudioCard studio={item} />"
+    )
+    return null
   }
 
-  const { _id, title, image, category, hourlyRate, location, rating } = studio;
+  const { _id, title, image, category, hourlyRate, location, rating } = studio
 
-  const ratingNumber = Number(rating);
-  const hasRating = Number.isFinite(ratingNumber) && ratingNumber > 0;
+  const ratingNumber = Number(rating)
+  const hasRating = Number.isFinite(ratingNumber) && ratingNumber > 0
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#1a1410]/10 bg-white shadow-sm transition-colors hover:border-[#B8926F] dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none dark:hover:border-[#C9A98B]/70">
@@ -71,12 +73,12 @@ const StudioCard = ({ studio }: { studio?: Studio }) => {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent" />
 
         {/* Category badge */}
-        <span className="absolute left-3 top-3 rounded-full bg-[#0e0b09]/80 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#C9A98B] backdrop-blur-sm">
+        <span className="absolute top-3 left-3 max-w-[calc(100%-6.5rem)] truncate rounded-full bg-[#0e0b09]/80 px-3 py-1 text-[11px] font-bold tracking-[0.14em] text-[#C9A98B] uppercase backdrop-blur-sm">
           {toCategoryLabel(category)}
         </span>
 
         {/* Rating badge */}
-        <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-[#C9A98B] px-2.5 py-1 text-xs font-bold text-[#1a1410]">
+        <span className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-[#C9A98B] px-2.5 py-1 text-xs font-bold text-[#1a1410]">
           <Star
             size={12}
             className={hasRating ? "fill-current" : ""}
@@ -113,13 +115,13 @@ const StudioCard = ({ studio }: { studio?: Studio }) => {
         {/* View Details — same tan pill as Sign Up */}
         <Link
           href={`/studioes/${_id}`}
-          className="mt-4 flex h-11 w-full items-center justify-center rounded-full bg-[#C9A98B] px-6 text-xs font-bold uppercase tracking-[0.18em] text-[#1a1410] transition hover:bg-[#D8BDA2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-black"
+          className="mt-4 flex h-11 w-full items-center justify-center rounded-full bg-[#C9A98B] px-6 text-xs font-bold tracking-[0.18em] text-[#1a1410] uppercase transition hover:bg-[#D8BDA2] focus-visible:ring-2 focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:outline-none dark:focus-visible:ring-offset-black"
         >
           View Details
         </Link>
       </div>
     </article>
-  );
-};
+  )
+}
 
-export default StudioCard;
+export default StudioCard

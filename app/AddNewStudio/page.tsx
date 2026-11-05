@@ -1,8 +1,8 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react"
+import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   MapPin,
   Image as ImageIcon,
@@ -13,13 +13,13 @@ import {
   Check,
   Plus,
   Loader2,
-} from "lucide-react";
-import { toast } from "sonner";
+} from "lucide-react"
+import { toast } from "sonner"
 
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client"
 
 /* ---------- Config ---------- */
-const API_URL = "http://localhost:8000";
+const API_URL = "http://localhost:8000"
 
 const categories = [
   { value: "photo-studio", label: "Photo Studio" },
@@ -28,7 +28,7 @@ const categories = [
   { value: "music-suite", label: "Music Suite" },
   { value: "workshop", label: "Workshop" },
   { value: "other", label: "Other" },
-];
+]
 
 const amenities = [
   "Wi-Fi",
@@ -41,7 +41,7 @@ const amenities = [
   "Kitchen",
   "Restroom",
   "24/7 Access",
-];
+]
 
 /* ---------- Validation ---------- */
 type FieldName =
@@ -52,9 +52,9 @@ type FieldName =
   | "maxCapacity"
   | "location"
   | "image"
-  | "overview";
+  | "overview"
 
-type Errors = Partial<Record<FieldName, string>>;
+type Errors = Partial<Record<FieldName, string>>
 
 // Order used to focus the first field with a problem
 const FIELD_ORDER: FieldName[] = [
@@ -66,80 +66,98 @@ const FIELD_ORDER: FieldName[] = [
   "location",
   "image",
   "overview",
-];
+]
 
 const isValidUrl = (value: string) => {
   try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
+    const url = new URL(value)
+    return url.protocol === "http:" || url.protocol === "https:"
   } catch {
-    return false;
+    return false
   }
-};
+}
 
 const validate = (v: Record<FieldName, string>): Errors => {
-  const errors: Errors = {};
+  const errors: Errors = {}
 
-  if (!v.title) errors.title = "Studio title is required.";
+  if (!v.title) errors.title = "Studio title is required."
   else if (v.title.length < 3)
-    errors.title = "Title must be at least 3 characters.";
+    errors.title = "Title must be at least 3 characters."
 
-  if (!v.category) errors.category = "Please choose a studio category.";
+  if (!v.category) errors.category = "Please choose a studio category."
 
-  if (!v.hourlyRate) errors.hourlyRate = "Hourly rate is required.";
+  if (!v.hourlyRate) errors.hourlyRate = "Hourly rate is required."
   else if (Number(v.hourlyRate) <= 0)
-    errors.hourlyRate = "Enter a rate greater than 0.";
+    errors.hourlyRate = "Enter a rate greater than 0."
 
   // Security deposit is optional, but if filled it must not be negative
   if (v.securityDeposit && Number(v.securityDeposit) < 0)
-    errors.securityDeposit = "Deposit can't be negative.";
+    errors.securityDeposit = "Deposit can't be negative."
 
-  if (!v.maxCapacity) errors.maxCapacity = "Maximum capacity is required.";
-  else if (!Number.isInteger(Number(v.maxCapacity)) || Number(v.maxCapacity) < 1)
-    errors.maxCapacity = "Enter a whole number of 1 or more.";
+  if (!v.maxCapacity) errors.maxCapacity = "Maximum capacity is required."
+  else if (
+    !Number.isInteger(Number(v.maxCapacity)) ||
+    Number(v.maxCapacity) < 1
+  )
+    errors.maxCapacity = "Enter a whole number of 1 or more."
 
-  if (!v.location) errors.location = "Studio address is required.";
+  if (!v.location) errors.location = "Studio address is required."
   else if (v.location.length < 5)
-    errors.location = "Please enter the complete address.";
+    errors.location = "Please enter the complete address."
 
-  if (!v.image) errors.image = "Studio image URL is required.";
+  if (!v.image) errors.image = "Studio image URL is required."
   else if (!isValidUrl(v.image))
-    errors.image = "Enter a valid URL starting with http:// or https://";
+    errors.image = "Enter a valid URL starting with http:// or https://"
 
-  if (!v.overview) errors.overview = "Please describe your studio.";
+  if (!v.overview) errors.overview = "Please describe your studio."
   else if (v.overview.length < 20)
-    errors.overview = "Overview must be at least 20 characters.";
+    errors.overview = "Overview must be at least 20 characters."
 
-  return errors;
-};
+  return errors
+}
+
+/* ---------- Edit mode ---------- */
+// Existing studio data, normalised into the form's field names
+// (older documents used name / price / description / capacity).
+type Prefill = {
+  ownerEmail: string
+  title: string
+  category: string
+  hourlyRate: string
+  securityDeposit: string
+  maxCapacity: string
+  location: string
+  image: string
+  amenities: string[]
+  overview: string
+}
 
 /* ---------- Shared styles (light + dark, same as Sign In / Sign Up) ---------- */
 const labelClass =
   "mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] " +
-  "text-[#3d3228]/75 dark:text-white/70";
+  "text-[#3d3228]/75 dark:text-white/70"
 
 const fieldClass =
   "w-full rounded-xl border text-sm outline-none transition " +
   "border-[#1a1410]/15 bg-[#faf8f5] text-[#1a1410] placeholder:text-[#1a1410]/40 " +
   "dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/35 " +
   "focus:border-[#B8926F] focus:ring-2 focus:ring-[#C9A98B]/40 " +
-  "dark:focus:border-[#C9A98B] dark:focus:ring-[#C9A98B]/30";
+  "dark:focus:border-[#C9A98B] dark:focus:ring-[#C9A98B]/30"
 
-const inputClass = `${fieldClass} h-11 pl-11 pr-4`;
+const inputClass = `${fieldClass} h-11 pl-11 pr-4`
 
 const errorFieldClass =
-  "!border-red-500/70 focus:!ring-red-500/25 dark:!border-red-400/70";
+  "!border-red-500/70 focus:!ring-red-500/25 dark:!border-red-400/70"
 
 const iconClass =
   "pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 " +
-  "text-[#1a1410]/40 dark:text-white/40";
+  "text-[#1a1410]/40 dark:text-white/40"
 
 // Dropdown options need solid colors: the select itself is semi-transparent in dark
 // mode, and browsers paint the open list on white, which hid the white option text.
-const optionClass =
-  "bg-white text-[#1a1410] dark:bg-[#1a1511] dark:text-white";
+const optionClass = "bg-white text-[#1a1410] dark:bg-[#1a1511] dark:text-white"
 
-const hintClass = "mt-2 text-xs text-[#1a1410]/50 dark:text-white/45";
+const hintClass = "mt-2 text-xs text-[#1a1410]/50 dark:text-white/45"
 
 // Tan pill (same as "Sign Up" in the navbar)
 const buttonClass =
@@ -148,14 +166,14 @@ const buttonClass =
   "hover:bg-[#D8BDA2] focus-visible:outline-none focus-visible:ring-2 " +
   "focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 " +
   "focus-visible:ring-offset-white dark:focus-visible:ring-offset-black " +
-  "disabled:cursor-not-allowed disabled:opacity-60";
+  "disabled:cursor-not-allowed disabled:opacity-60"
 
 // Outlined pill (same idea as "Host your space" on the hero)
 const outlineButtonClass =
   "flex h-11 items-center justify-center rounded-full border border-[#8a6a4d]/60 px-8 " +
   "text-sm font-bold uppercase tracking-[0.18em] text-[#3d3228] transition " +
   "hover:bg-[#C9A98B]/15 dark:border-[#C9A98B]/60 dark:text-white " +
-  "disabled:cursor-not-allowed disabled:opacity-60";
+  "disabled:cursor-not-allowed disabled:opacity-60"
 
 /* ---------- Small building blocks ---------- */
 const Field = ({
@@ -166,12 +184,12 @@ const Field = ({
   error,
   children,
 }: {
-  label: string;
-  htmlFor: string;
-  required?: boolean;
-  hint?: string;
-  error?: string;
-  children: React.ReactNode;
+  label: string
+  htmlFor: string
+  required?: boolean
+  hint?: string
+  error?: string
+  children: React.ReactNode
 }) => (
   <div>
     <label htmlFor={htmlFor} className={labelClass}>
@@ -190,56 +208,115 @@ const Field = ({
       hint && <p className={hintClass}>{hint}</p>
     )}
   </div>
-);
+)
 
 const Section = ({
   title,
   children,
 }: {
-  title: string;
-  children: React.ReactNode;
+  title: string
+  children: React.ReactNode
 }) => (
   <section className="border-t border-[#1a1410]/10 pt-7 dark:border-white/10">
-    <h2 className="mb-5 flex items-center gap-3 text-sm font-extrabold uppercase tracking-[0.2em]">
+    <h2 className="mb-5 flex items-center gap-3 text-sm font-extrabold tracking-[0.2em] uppercase">
       <span className="h-px w-6 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
       {title}
     </h2>
     <div className="space-y-5">{children}</div>
   </section>
-);
+)
 
 /* ---------- Page ---------- */
-const AddStudioPage = () => {
-  const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
-  const user = session?.user;
+const AddStudioContent = () => {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const editId = searchParams.get("edit")
+  const isEdit = Boolean(editId)
+  const { data: session, isPending } = authClient.useSession()
+  const user = session?.user
 
-  const [errors, setErrors] = useState<Errors>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
-  const [imageFailed, setImageFailed] = useState(false);
+  const [errors, setErrors] = useState<Errors>({})
+  const [submitting, setSubmitting] = useState(false)
+  const [imageUrl, setImageUrl] = useState("")
+  const [imageFailed, setImageFailed] = useState(false)
+  const [prefill, setPrefill] = useState<Prefill | null>(null)
+  const [editLoading, setEditLoading] = useState(isEdit)
 
-  const invalid = (name: FieldName) => (errors[name] ? errorFieldClass : "");
+  // Edit mode: fetch the existing studio and fill the form with it
+  useEffect(() => {
+    if (!editId) return
+
+    let cancelled = false
+
+    const loadStudio = async () => {
+      try {
+        const res = await fetch(`${API_URL}/getStudio/${editId}`, {
+          cache: "no-store",
+        })
+
+        if (!res.ok) throw new Error("Studio not found")
+
+        const data = (await res.json()) as Record<string, unknown>
+
+        if (cancelled) return
+
+        const next: Prefill = {
+          ownerEmail: String(data.ownerEmail ?? ""),
+          title: String(data.title ?? data.name ?? ""),
+          category: String(data.category ?? ""),
+          hourlyRate: String(data.hourlyRate ?? data.price ?? ""),
+          securityDeposit: String(data.securityDeposit ?? ""),
+          maxCapacity: String(data.maxCapacity ?? data.capacity ?? ""),
+          location: String(data.location ?? ""),
+          image: String(data.image ?? ""),
+          amenities: Array.isArray(data.amenities)
+            ? data.amenities.map(String)
+            : [],
+          overview: String(data.overview ?? data.description ?? ""),
+        }
+
+        setPrefill(next)
+        setImageUrl(next.image)
+        setEditLoading(false)
+      } catch {
+        if (cancelled) return
+
+        setEditLoading(false)
+        toast.error("Couldn't load this studio", {
+          description: "Please try again in a moment.",
+        })
+        router.back()
+      }
+    }
+
+    loadStudio()
+
+    return () => {
+      cancelled = true
+    }
+  }, [editId, router])
+
+  const invalid = (name: FieldName) => (errors[name] ? errorFieldClass : "")
 
   // Clear a field's error as soon as the user edits it
   const handleChange = (e: React.ChangeEvent<HTMLFormElement>) => {
-    const name = (e.target as HTMLInputElement).name as FieldName;
+    const name = e.target.name as FieldName
     if (name && errors[name]) {
       setErrors((prev) => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
+        const next = { ...prev }
+        delete next[name]
+        return next
+      })
     }
-  };
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!user) return;
+    e.preventDefault()
+    if (!user) return
 
     // Keep a reference: e.currentTarget is cleared after the first await
-    const formEl = e.currentTarget;
-    const form = new FormData(formEl);
+    const formEl = e.currentTarget
+    const form = new FormData(formEl)
 
     const values = {
       title: String(form.get("title") ?? "").trim(),
@@ -250,25 +327,25 @@ const AddStudioPage = () => {
       location: String(form.get("location") ?? "").trim(),
       image: String(form.get("image") ?? "").trim(),
       overview: String(form.get("overview") ?? "").trim(),
-    };
+    }
 
     /* ----- Validate ----- */
-    const found = validate(values);
-    setErrors(found);
+    const found = validate(values)
+    setErrors(found)
 
-    const problems = Object.keys(found).length;
+    const problems = Object.keys(found).length
     if (problems > 0) {
       toast.error("Please complete the form", {
         description: `${problems} ${
           problems === 1 ? "field needs" : "fields need"
         } your attention.`,
-      });
+      })
 
-      const first = FIELD_ORDER.find((key) => found[key]);
+      const first = FIELD_ORDER.find((key) => found[key])
       if (first) {
-        (formEl.elements.namedItem(first) as HTMLElement | null)?.focus();
+        ;(formEl.elements.namedItem(first) as HTMLElement | null)?.focus()
       }
-      return;
+      return
     }
 
     /* ----- Submit ----- */
@@ -285,18 +362,26 @@ const AddStudioPage = () => {
       overview: values.overview,
       ownerName: user.name,
       ownerEmail: user.email,
-    };
+    }
 
-    setSubmitting(true);
+    // The studio's owner email (falls back to the signed-in user)
+    const ownerEmail = prefill?.ownerEmail || user.email
+
+    setSubmitting(true)
 
     try {
-      const res = await fetch(`${API_URL}/addStudio`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        isEdit
+          ? `${API_URL}/studios/${encodeURIComponent(ownerEmail)}`
+          : `${API_URL}/addStudio`,
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      )
 
-      const result = await res.json().catch(() => null);
+      const result = await res.json().catch(() => null)
 
       // 409 = this email already has a studio (sent by the backend)
       if (res.status === 409) {
@@ -304,41 +389,75 @@ const AddStudioPage = () => {
           description:
             result?.message ??
             "You have already listed a studio with this email.",
-        });
-        return;
+        })
+        return
       }
 
       if (!res.ok) {
-        throw new Error(result?.message ?? "Could not publish the studio.");
+        throw new Error(
+          result?.message ??
+            (isEdit
+              ? "Could not save your changes."
+              : "Could not publish the studio.")
+        )
+      }
+
+      if (isEdit) {
+        toast.success("Studio updated!", {
+          description: "Your changes have been saved.",
+        })
+
+        // Back to the owner dashboard, which reloads the list
+        router.push(`/studioes/owner/${encodeURIComponent(ownerEmail)}`)
+        return
       }
 
       toast.success("Studio published!", {
         description: "Your studio was submitted successfully.",
-      });
+      })
 
       // Refresh the form after a successful submission
-      formEl.reset();
-      setErrors({});
-      setImageUrl("");
-      setImageFailed(false);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      formEl.reset()
+      setErrors({})
+      setImageUrl("")
+      setImageFailed(false)
+      window.scrollTo({ top: 0, behavior: "smooth" })
     } catch (err) {
       // fetch() throws a TypeError when the server can't be reached at all
       toast.error(
         err instanceof TypeError
           ? "Can't reach the server. Make sure your backend is running."
           : err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again."
-      );
+            ? err.message
+            : "Something went wrong. Please try again."
+      )
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
+
+  // Keep values the studio already has, even when they are not in the
+  // default option lists (seeded documents use different labels).
+  const categoryOptions = prefill?.category
+    ? categories.some((c) => c.value === prefill.category)
+      ? categories
+      : [
+          ...categories,
+          {
+            value: prefill.category,
+            label: prefill.category.replace(/-/g, " "),
+          },
+        ]
+    : categories
+
+  const amenityOptions = [
+    ...amenities,
+    ...(prefill?.amenities ?? []).filter((a) => !amenities.includes(a)),
+  ]
 
   return (
     /* pt-28 clears the fixed navbar */
-    <div className="relative min-h-[100dvh] bg-[#faf8f5] px-4 pb-16 pt-28 text-[#1a1410] dark:bg-[#0e0b09] dark:text-white sm:px-6">
+    <div className="relative min-h-[100dvh] bg-[#faf8f5] px-4 pt-28 pb-16 text-[#1a1410] sm:px-6 dark:bg-[#0e0b09] dark:text-white">
       {/* soft tan glow behind the card */}
       <div
         aria-hidden
@@ -350,17 +469,17 @@ const AddStudioPage = () => {
       />
 
       <div className="relative mx-auto w-full max-w-3xl">
-        {/* Loading */}
-        {isPending && (
+        {/* Loading session or the studio being edited */}
+        {(isPending || editLoading) && (
           <div className="flex justify-center py-24">
             <Loader2 className="h-6 w-6 animate-spin text-[#8a6a4d] dark:text-[#C9A98B]" />
           </div>
         )}
 
         {/* Not signed in */}
-        {!isPending && !user && (
+        {!isPending && !editLoading && !user && (
           <div className="mx-auto max-w-md rounded-2xl border border-[#1a1410]/10 bg-white p-8 text-center shadow-xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none">
-            <h1 className="text-3xl font-extrabold uppercase tracking-tight">
+            <h1 className="text-3xl font-extrabold tracking-tight uppercase">
               Sign in first
             </h1>
             <p className="mt-3 text-sm text-[#3d3228]/70 dark:text-white/60">
@@ -373,30 +492,41 @@ const AddStudioPage = () => {
         )}
 
         {/* Form */}
-        {user && (
+        {!isPending && !editLoading && user && (
           <form
             onSubmit={handleSubmit}
             onChange={handleChange}
             noValidate
-            className="rounded-2xl border border-[#1a1410]/10 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none sm:p-10"
+            className="rounded-2xl border border-[#1a1410]/10 bg-white p-6 shadow-xl sm:p-10 dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none"
           >
             {/* Header */}
             <div className="mb-9">
               <div className="mb-3 flex items-center gap-3">
                 <span className="h-px w-8 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
-                <span className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8a6a4d] dark:text-[#C9A98B]">
-                  Host your space
+                <span className="text-xs font-semibold tracking-[0.3em] text-[#8a6a4d] uppercase dark:text-[#C9A98B]">
+                  {isEdit ? "Edit listing" : "Host your space"}
                 </span>
               </div>
 
-              <h1 className="text-3xl font-extrabold uppercase tracking-tight sm:text-5xl">
-                List your studio
+              <h1 className="text-3xl font-extrabold tracking-tight uppercase sm:text-5xl">
+                {isEdit ? "Update your studio" : "List your studio"}
               </h1>
 
               <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#3d3228]/70 dark:text-white/60">
-                Share your creative space with professionals and creators. Fill
-                in the details below to publish your studio listing. Fields
-                marked <span className="text-red-500">*</span> are required.
+                {isEdit ? (
+                  <>
+                    Change the details below and save to update your listing.
+                    Fields marked <span className="text-red-500">*</span> are
+                    required.
+                  </>
+                ) : (
+                  <>
+                    Share your creative space with professionals and creators.
+                    Fill in the details below to publish your studio listing.
+                    Fields marked <span className="text-red-500">*</span> are
+                    required.
+                  </>
+                )}
               </p>
             </div>
 
@@ -416,6 +546,7 @@ const AddStudioPage = () => {
                       name="title"
                       type="text"
                       placeholder="e.g. Modern Photography Studio"
+                      defaultValue={prefill?.title ?? ""}
                       aria-invalid={!!errors.title}
                       className={`${inputClass} ${invalid("title")}`}
                     />
@@ -432,14 +563,14 @@ const AddStudioPage = () => {
                     <select
                       id="category"
                       name="category"
-                      defaultValue=""
+                      defaultValue={prefill?.category ?? ""}
                       aria-invalid={!!errors.category}
                       className={`${fieldClass} h-11 appearance-none px-4 pr-11 [color-scheme:light] dark:[color-scheme:dark] ${invalid("category")}`}
                     >
                       <option value="" disabled className={optionClass}>
                         Choose studio category
                       </option>
-                      {categories.map((c) => (
+                      {categoryOptions.map((c) => (
                         <option
                           key={c.value}
                           value={c.value}
@@ -449,7 +580,7 @@ const AddStudioPage = () => {
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1a1410]/50 dark:text-white/50" />
+                    <ChevronDown className="pointer-events-none absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 text-[#1a1410]/50 dark:text-white/50" />
                   </div>
                 </Field>
               </Section>
@@ -470,6 +601,7 @@ const AddStudioPage = () => {
                         name="hourlyRate"
                         type="number"
                         placeholder="50"
+                        defaultValue={prefill?.hourlyRate ?? ""}
                         aria-invalid={!!errors.hourlyRate}
                         className={`${inputClass} ${invalid("hourlyRate")}`}
                       />
@@ -489,6 +621,7 @@ const AddStudioPage = () => {
                         name="securityDeposit"
                         type="number"
                         placeholder="100"
+                        defaultValue={prefill?.securityDeposit ?? ""}
                         aria-invalid={!!errors.securityDeposit}
                         className={`${inputClass} ${invalid("securityDeposit")}`}
                       />
@@ -508,6 +641,7 @@ const AddStudioPage = () => {
                         name="maxCapacity"
                         type="number"
                         placeholder="e.g. 20 people"
+                        defaultValue={prefill?.maxCapacity ?? ""}
                         aria-invalid={!!errors.maxCapacity}
                         className={`${inputClass} ${invalid("maxCapacity")}`}
                       />
@@ -531,6 +665,7 @@ const AddStudioPage = () => {
                       name="location"
                       type="text"
                       placeholder="Enter complete studio address"
+                      defaultValue={prefill?.location ?? ""}
                       aria-invalid={!!errors.location}
                       className={`${inputClass} ${invalid("location")}`}
                     />
@@ -551,11 +686,12 @@ const AddStudioPage = () => {
                       name="image"
                       type="url"
                       placeholder="https://example.com/studio-image.jpg"
+                      defaultValue={prefill?.image ?? ""}
                       aria-invalid={!!errors.image}
                       className={`${inputClass} ${invalid("image")}`}
                       onChange={(e) => {
-                        setImageUrl(e.target.value);
-                        setImageFailed(false);
+                        setImageUrl(e.target.value)
+                        setImageFailed(false)
                       }}
                     />
                   </div>
@@ -579,12 +715,15 @@ const AddStudioPage = () => {
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {amenities.map((amenity) => (
+                  {amenityOptions.map((amenity) => (
                     <label key={amenity} className="cursor-pointer">
                       <input
                         type="checkbox"
                         name="amenities"
                         value={amenity}
+                        defaultChecked={
+                          prefill?.amenities.includes(amenity) ?? false
+                        }
                         className="peer sr-only"
                       />
                       <span
@@ -603,7 +742,7 @@ const AddStudioPage = () => {
                           className="shrink-0 text-[#8a6a4d] transition-opacity dark:text-[#C9A98B]"
                           aria-hidden="true"
                         />
-                        {amenity}
+                        <span className="min-w-0 break-words">{amenity}</span>
                       </span>
                     </label>
                   ))}
@@ -623,6 +762,7 @@ const AddStudioPage = () => {
                     id="overview"
                     name="overview"
                     placeholder="Describe your studio, facilities, equipment, atmosphere and what makes it special..."
+                    defaultValue={prefill?.overview ?? ""}
                     aria-invalid={!!errors.overview}
                     className={`${fieldClass} min-h-40 resize-none p-4 ${invalid("overview")}`}
                   />
@@ -659,7 +799,7 @@ const AddStudioPage = () => {
               </Section>
 
               {/* Buttons */}
-              <div className="flex flex-col-reverse gap-3 border-t border-[#1a1410]/10 pt-7 dark:border-white/10 sm:flex-row sm:justify-end">
+              <div className="flex flex-col-reverse gap-3 border-t border-[#1a1410]/10 pt-7 sm:flex-row sm:justify-end dark:border-white/10">
                 <button
                   type="button"
                   onClick={() => router.back()}
@@ -676,10 +816,18 @@ const AddStudioPage = () => {
                 >
                   {submitting ? (
                     <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                  ) : isEdit ? (
+                    <Check size={18} />
                   ) : (
                     <Plus size={18} />
                   )}
-                  {submitting ? "Publishing..." : "Publish Studio"}
+                  {submitting
+                    ? isEdit
+                      ? "Saving..."
+                      : "Publishing..."
+                    : isEdit
+                      ? "Save Changes"
+                      : "Publish Studio"}
                 </button>
               </div>
             </div>
@@ -687,7 +835,20 @@ const AddStudioPage = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AddStudioPage;
+/* ---------- Suspense Wrapper ---------- */
+const AddStudioPage = () => (
+  <Suspense
+    fallback={
+      <div className="flex min-h-screen items-center justify-center bg-[#faf8f5] dark:bg-[#0e0b09]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#8a6a4d] dark:text-[#C9A98B]" />
+      </div>
+    }
+  >
+    <AddStudioContent />
+  </Suspense>
+)
+
+export default AddStudioPage

@@ -1,9 +1,11 @@
-import { betterAuth } from "better-auth";
-import { MongoClient } from "mongodb";
-import { mongodbAdapter } from "@better-auth/mongo-adapter";
+import { betterAuth } from "better-auth"
+import { MongoClient } from "mongodb"
+import { mongodbAdapter } from "@better-auth/mongo-adapter"
 
-const client = new MongoClient(process.env.MONGO_URI as string);
-const db = client.db("StudioSpace");
+const client = new MongoClient(process.env.MONGO_URI as string)
+// Exported so API route handlers reuse this same connection/DB instead of
+// opening a second pool (the Express server uses the same "StudioSpace" db).
+export const db = client.db("StudioSpace")
 
 export const auth = betterAuth({
   database: mongodbAdapter(db, {
@@ -11,7 +13,7 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-	autoSignIn: false, 
+    autoSignIn: false,
   },
   socialProviders: {
     github: {
@@ -19,4 +21,4 @@ export const auth = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
     },
   },
-});
+})

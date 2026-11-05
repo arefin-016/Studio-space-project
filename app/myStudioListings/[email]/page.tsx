@@ -1,84 +1,99 @@
+"use client"
 
-"use client";
-
-import { useCallback, useEffect, useState, type FormEvent } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react"
+import Image from "next/image"
+import Link from "next/link"
+import { useParams } from "next/navigation"
 import {
   Aperture,
+  Ban,
   CalendarDays,
+  Check,
+  CheckCheck,
   Clock,
   Loader2,
   MapPin,
-  Pencil,
-  Trash2,
-  X,
-} from "lucide-react";
-import { toast } from "sonner";
+} from "lucide-react"
+import { toast } from "sonner"
 
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client"
 
-const API_URL = "http://localhost:8000";
+const API_URL = "http://localhost:8000"
+
+type BookingStatus = "Pending" | "Confirmed" | "Completed" | "Cancelled"
 
 interface Booking {
-  _id: string;
+  _id: string
+  status?: string
   user: {
-    name: string;
-    email: string;
-  };
+    name: string
+    email: string
+  }
   studio: {
-    id: string;
-    name?: string;
-    image?: string | string[];
-    location?: string;
-    category?: string;
-    hourlyRate?: number;
-  };
+    id: string
+    name?: string
+    image?: string | string[]
+    location?: string
+    category?: string
+    hourlyRate?: number
+  }
   booking: {
-    date: string;
-    startTime: string;
-    duration: number;
-    totalPrice: number;
-  };
+    date: string
+    startTime: string
+    duration: number
+    totalPrice: number
+  }
 }
 
 const safeDecode = (value: string) => {
   try {
-    return decodeURIComponent(value);
+    return decodeURIComponent(value)
   } catch {
-    return value;
+    return value
   }
-};
+}
 
 const categoryLabel = (value?: string) =>
   value
     ? value.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-    : "Studio";
+    : "Studio"
 
 const formatDate = (value: string) => {
-  const d = new Date(`${value}T00:00:00`);
+  const d = new Date(`${value}T00:00:00`)
   return Number.isNaN(d.getTime())
     ? value
     : d.toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
         year: "numeric",
-      });
-};
+      })
+}
 
 const formatTime = (value: string) => {
-  const [h, m] = value.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return value;
-  const suffix = h >= 12 ? "PM" : "AM";
-  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${suffix}`;
-};
+  const [h, m] = value.split(":").map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return value
+  const suffix = h >= 12 ? "PM" : "AM"
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${suffix}`
+}
 
 const getImage = (image?: string | string[]) =>
-  Array.isArray(image) ? image[0] : image;
+  Array.isArray(image) ? image[0] : image
+
+// Status comes straight from the backend: Pending → Confirmed → Completed
+// (written by the Confirm / Complete actions), or Cancelled. Unknown or
+// missing values count as Pending.
+const getDisplayStatus = (item: Booking): BookingStatus => {
+  const raw = item.status?.trim().toLowerCase()
+
+  if (raw === "confirmed") return "Confirmed"
+  if (raw === "completed") return "Completed"
+  if (raw === "cancelled" || raw === "canceled") return "Cancelled"
+
+  return "Pending"
+}
 
 const cardSurface =
-  "rounded-2xl border border-[#1a1410]/10 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none";
+  "rounded-2xl border border-[#1a1410]/10 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none"
 
 const tanButton =
   "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#C9A98B] px-7 " +
@@ -86,29 +101,60 @@ const tanButton =
   "hover:bg-[#D8BDA2] focus-visible:outline-none focus-visible:ring-2 " +
   "focus-visible:ring-[#C9A98B] focus-visible:ring-offset-2 " +
   "focus-visible:ring-offset-white dark:focus-visible:ring-offset-black " +
-  "disabled:cursor-not-allowed disabled:opacity-60";
+  "disabled:cursor-not-allowed disabled:opacity-60"
 
-const updateButton =
-  "inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-[#C9A98B] px-4 " +
-  "text-xs font-bold uppercase tracking-[0.14em] text-[#1a1410] transition hover:bg-[#D8BDA2]";
-
-const deleteButton =
+const cancelButton =
   "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-4 " +
-  "border-red-500/50 text-xs font-bold uppercase tracking-[0.14em] text-red-600 transition " +
-  "hover:bg-red-500/10 dark:border-red-400/50 dark:text-red-400";
+  "border-red-500/50 text-xs font-bold uppercase tracking-[0.14em] whitespace-nowrap text-red-600 transition " +
+  "hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60 " +
+  "dark:border-red-400/50 dark:text-red-400"
 
-const inputStyle =
-  "w-full rounded-xl border border-[#1a1410]/15 bg-white px-4 py-3 text-sm outline-none " +
-  "focus:border-[#C9A98B] dark:border-white/15 dark:bg-[#0e0b09] dark:[color-scheme:dark]";
+// Tan pill (Confirm / Complete) — same shape as the owner page's actions
+const confirmButton =
+  "inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-[#C9A98B] px-4 " +
+  "text-xs font-bold uppercase tracking-[0.14em] whitespace-nowrap text-[#1a1410] transition " +
+  "hover:bg-[#D8BDA2] disabled:cursor-not-allowed disabled:opacity-60"
+
+const statusStyles: Record<BookingStatus, { badge: string; dot: string }> = {
+  Pending: {
+    badge: "border-amber-500/40 text-amber-700 dark:text-amber-400",
+    dot: "bg-amber-500",
+  },
+  Confirmed: {
+    badge: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+    dot: "bg-emerald-500",
+  },
+  Completed: {
+    badge: "border-sky-500/40 text-sky-700 dark:text-sky-400",
+    dot: "bg-sky-500",
+  },
+  Cancelled: {
+    badge: "border-red-500/40 text-red-600 dark:text-red-400",
+    dot: "bg-red-500",
+  },
+}
+
+const StatusBadge = ({ status }: { status: BookingStatus }) => {
+  const style = statusStyles[status]
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold tracking-[0.14em] whitespace-nowrap uppercase ${style.badge}`}
+    >
+      <span className={`size-1.5 rounded-full ${style.dot}`} />
+      {status}
+    </span>
+  )
+}
 
 const StudioThumb = ({
   image,
   title,
   className,
 }: {
-  image?: string;
-  title: string;
-  className: string;
+  image?: string
+  title: string
+  className: string
 }) => (
   <div
     className={`relative shrink-0 overflow-hidden bg-[#1a1410]/5 dark:bg-white/5 ${className}`}
@@ -128,27 +174,27 @@ const StudioThumb = ({
       </div>
     )}
   </div>
-);
+)
 
-const DeleteModal = ({
+const CancelModal = ({
   booking,
-  deleting,
-  onCancel,
+  cancelling,
+  onClose,
   onConfirm,
 }: {
-  booking: Booking;
-  deleting: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
+  booking: Booking
+  cancelling: boolean
+  onClose: () => void
+  onConfirm: () => void
 }) => {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !deleting) onCancel();
-    };
+      if (e.key === "Escape" && !cancelling) onClose()
+    }
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [deleting, onCancel]);
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [cancelling, onClose])
 
   return (
     <div
@@ -158,33 +204,33 @@ const DeleteModal = ({
     >
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={() => !deleting && onCancel()}
+        onClick={() => !cancelling && onClose()}
       />
 
-      <div className="relative w-full max-w-md rounded-2xl border border-[#1a1410]/10 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#0e0b09] sm:p-8">
+      <div className="relative w-full max-w-md rounded-2xl border border-[#1a1410]/10 bg-white p-6 shadow-2xl sm:p-8 dark:border-white/10 dark:bg-[#0e0b09]">
         <span className="mb-5 flex size-12 items-center justify-center rounded-full border border-red-500/40 text-red-600 dark:text-red-400">
-          <Trash2 size={20} aria-hidden="true" />
+          <Ban size={20} aria-hidden="true" />
         </span>
 
-        <h2 className="text-2xl font-extrabold uppercase tracking-tight">
+        <h2 className="text-2xl font-extrabold tracking-tight uppercase">
           Cancel this booking?
         </h2>
 
         <p className="mt-3 text-sm leading-relaxed text-[#3d3228]/75 dark:text-white/60">
-          Your booking for{" "}
+          Your pending booking for{" "}
           <span className="font-bold text-[#1a1410] dark:text-white">
             {booking.studio.name || "this studio"}
           </span>{" "}
-          on {formatDate(booking.booking.date)} will be removed. This
-          can&apos;t be undone.
+          on {formatDate(booking.booking.date)} will be removed from your
+          bookings. This can&apos;t be undone.
         </p>
 
         <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
-            onClick={onCancel}
-            disabled={deleting}
-            className="inline-flex h-11 items-center justify-center rounded-full border border-[#8a6a4d]/60 px-7 text-xs font-bold uppercase tracking-[0.18em] text-[#3d3228] transition hover:bg-[#C9A98B]/15 disabled:opacity-60 dark:border-[#C9A98B]/60 dark:text-white"
+            onClick={onClose}
+            disabled={cancelling}
+            className="inline-flex h-11 items-center justify-center rounded-full border border-[#8a6a4d]/60 px-7 text-xs font-bold tracking-[0.18em] text-[#3d3228] uppercase transition hover:bg-[#C9A98B]/15 disabled:opacity-60 dark:border-[#C9A98B]/60 dark:text-white"
           >
             Keep it
           </button>
@@ -192,329 +238,177 @@ const DeleteModal = ({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={deleting}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-red-600 px-7 text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={cancelling}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-red-600 px-7 text-xs font-bold tracking-[0.18em] text-white uppercase transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {deleting ? (
+            {cancelling ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Trash2 size={16} aria-hidden="true" />
+              <Ban size={16} aria-hidden="true" />
             )}
-            {deleting ? "Deleting..." : "Yes, delete"}
+            {cancelling ? "Removing..." : "Yes, remove"}
           </button>
         </div>
       </div>
     </div>
-  );
-};
-
-const EditModal = ({
-  booking,
-  saving,
-  onCancel,
-  onSave,
-}: {
-  booking: Booking;
-  saving: boolean;
-  onCancel: () => void;
-  onSave: (values: {
-    date: string;
-    startTime: string;
-    duration: number;
-  }) => void;
-}) => {
-  const [date, setDate] = useState(booking.booking.date);
-  const [startTime, setStartTime] = useState(booking.booking.startTime);
-  const [duration, setDuration] = useState(
-    String(booking.booking.duration)
-  );
-
-  const hourlyRate = booking.studio.hourlyRate ?? 0;
-  const total = hourlyRate * Number(duration);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !saving) onCancel();
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [saving, onCancel]);
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    onSave({ date, startTime, duration: Number(duration) });
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={() => !saving && onCancel()}
-      />
-
-      <div className="relative w-full max-w-md rounded-2xl border border-[#1a1410]/10 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#0e0b09] sm:p-8">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          aria-label="Close"
-          className="absolute right-5 top-5 rounded-full p-2 hover:bg-black/10 dark:hover:bg-white/10"
-        >
-          <X size={18} />
-        </button>
-
-        <span className="text-xs font-bold uppercase tracking-[0.3em] text-[#8a6a4d] dark:text-[#C9A98B]">
-          Edit reservation
-        </span>
-
-        <h2 className="mt-3 text-2xl font-extrabold uppercase tracking-tight">
-          Update booking
-        </h2>
-
-        <p className="mt-2 text-sm text-[#3d3228]/70 dark:text-white/60">
-          {booking.studio.name || "Studio Booking"}
-        </p>
-
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-          <div>
-            <label className="mb-2 block text-sm font-semibold">
-              Date
-            </label>
-            <input
-              type="date"
-              required
-              min={new Date().toISOString().split("T")[0]}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-semibold">
-              Starting time
-            </label>
-            <input
-              type="time"
-              required
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-semibold">
-              Duration
-            </label>
-            <select
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className={inputStyle}
-            >
-              {[1, 2, 3, 4, 5, 6, 8].map((hour) => (
-                <option key={hour} value={hour}>
-                  {hour} {hour === 1 ? "Hour" : "Hours"}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl bg-[#C9A98B]/15 p-4">
-            <span className="text-sm font-semibold">New total</span>
-            <span className="text-xl font-extrabold text-[#8a6a4d] dark:text-[#C9A98B]">
-              ${total}
-            </span>
-          </div>
-
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={saving}
-              className="inline-flex h-11 items-center justify-center rounded-full border border-[#8a6a4d]/60 px-7 text-xs font-bold uppercase tracking-[0.18em] text-[#3d3228] transition hover:bg-[#C9A98B]/15 disabled:opacity-60 dark:border-[#C9A98B]/60 dark:text-white"
-            >
-              Cancel
-            </button>
-
-            <button type="submit" disabled={saving} className={tanButton}>
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {saving ? "Saving..." : "Save changes"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
+  )
+}
 
 const MyStudioListingsPage = () => {
-  const params = useParams<{ email: string }>();
-  const email = safeDecode(params?.email ?? "");
+  const params = useParams<{ email: string }>()
+  const email = safeDecode(params?.email ?? "")
 
-  const { data: session, isPending } = authClient.useSession();
-  const user = session?.user;
+  const { data: session, isPending } = authClient.useSession()
+  const user = session?.user
 
   const isOwner =
-    !!user && !!email && user.email.toLowerCase() === email.toLowerCase();
+    !!user && !!email && user.email.toLowerCase() === email.toLowerCase()
 
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">(
-    "loading"
-  );
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading")
 
-  const [toDelete, setToDelete] = useState<Booking | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [toCancel, setToCancel] = useState<Booking | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
-  const [toEdit, setToEdit] = useState<Booking | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [updatingKind, setUpdatingKind] = useState<
+    "confirm" | "complete" | null
+  >(null)
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(
         `${API_URL}/bookedStudio/${encodeURIComponent(email)}`,
         { cache: "no-store" }
-      );
+      )
 
-      if (!res.ok) throw new Error("Failed to load");
+      if (!res.ok) throw new Error("Failed to load")
 
-      const data = await res.json();
-      setBookings(Array.isArray(data) ? data : []);
-      setStatus("ready");
+      const data = await res.json()
+      setBookings(Array.isArray(data) ? data : [])
+      setStatus("ready")
     } catch (error) {
-      console.error("Failed to load bookings:", error);
-      setStatus("error");
+      console.error("Failed to load bookings:", error)
+      setStatus("error")
     }
-  }, [email]);
+  }, [email])
 
   useEffect(() => {
-    if (isOwner) load();
-  }, [isOwner, load]);
+    if (!isOwner) return
 
-  const handleDelete = async () => {
-    if (!toDelete) return;
+    // Schedule the fetch instead of running it synchronously inside the
+    // effect (react-hooks/set-state-in-effect) — state updates then happen
+    // in a later microtask, after the fetch resolves.
+    queueMicrotask(() => {
+      load()
+    })
+  }, [isOwner, load])
 
-    setDeleting(true);
+  // PATCH /api/booking-requests/:id — Confirm (Pending → Confirmed) and
+  // Complete (Confirmed → Completed). Ownership is verified server-side
+  // from the Better Auth session, never from this payload.
+  const updateStatus = async (
+    item: Booking,
+    next: "Confirmed" | "Completed"
+  ) => {
+    if (updatingId || cancelling) return
 
-    try {
-      const res = await fetch(`${API_URL}/bookings/${toDelete._id}`, {
-        method: "DELETE",
-      });
-
-      const result = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(
-          result?.message ?? `Delete failed (server error ${res.status}).`
-        );
-      }
-
-      if (result?.deletedCount === 0) {
-        throw new Error("Booking not found. It may already be deleted.");
-      }
-
-      setBookings((prev) =>
-        prev.filter((b) => b._id !== toDelete._id)
-      );
-
-      toast.success("Booking deleted successfully", {
-        description: `${toDelete.studio.name || "Studio"} on ${formatDate(
-          toDelete.booking.date
-        )} was removed.`,
-      });
-
-      setToDelete(null);
-    } catch (err) {
-      toast.error(
-        err instanceof TypeError
-          ? "Can't reach the server. Make sure your backend is running."
-          : err instanceof Error
-            ? err.message
-            : "Something went wrong. Please try again."
-      );
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const handleUpdate = async (values: {
-    date: string;
-    startTime: string;
-    duration: number;
-  }) => {
-    if (!toEdit) return;
-
-    const totalPrice =
-      (toEdit.studio.hourlyRate ?? 0) * values.duration;
-
-    setSaving(true);
+    setUpdatingId(item._id)
+    setUpdatingKind(next === "Confirmed" ? "confirm" : "complete")
 
     try {
-      const res = await fetch(`${API_URL}/editStudio/${toEdit._id}`, {
+      const res = await fetch(`/api/booking-requests/${item._id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...values,
-          totalPrice,
-        }),
-      });
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      })
 
-      const result = await res.json().catch(() => null);
+      const result = await res.json().catch(() => null)
 
       if (!res.ok) {
+        // 409 = the booking already moved on; resync with the server
+        if (res.status === 409) load()
         throw new Error(
           result?.message ?? `Update failed (server error ${res.status}).`
-        );
-      }
-
-      if (result?.matchedCount === 0) {
-        throw new Error("Booking not found. It may have been deleted.");
+        )
       }
 
       setBookings((prev) =>
-        prev.map((b) =>
-          b._id === toEdit._id
-            ? {
-                ...b,
-                booking: {
-                  ...b.booking,
-                  ...values,
-                  totalPrice,
-                },
-              }
-            : b
-        )
-      );
+        prev.map((b) => (b._id === item._id ? { ...b, status: next } : b))
+      )
 
-      toast.success("Booking updated successfully", {
-        description: `New date: ${formatDate(values.date)} at ${formatTime(
-          values.startTime
-        )}.`,
-      });
-
-      setToEdit(null);
+      if (next === "Confirmed") {
+        toast.success("Booking confirmed", {
+          description: `${item.studio.name || "Studio"} on ${formatDate(
+            item.booking.date
+          )} is now confirmed.`,
+        })
+      } else {
+        toast.success("Booking completed", {
+          description: `${item.studio.name || "Studio"} on ${formatDate(
+            item.booking.date
+          )} is now completed.`,
+        })
+      }
     } catch (err) {
       toast.error(
         err instanceof TypeError
-          ? "Can't reach the server. Make sure your backend is running."
+          ? "Can't reach the server. Please try again."
           : err instanceof Error
             ? err.message
             : "Something went wrong. Please try again."
-      );
+      )
     } finally {
-      setSaving(false);
+      setUpdatingId(null)
+      setUpdatingKind(null)
     }
-  };
+  }
+
+  // Cancel means remove: DELETE /api/booking-requests/:id deletes the
+  // booking outright (ownership verified server-side via the session).
+  const handleCancel = async () => {
+    if (!toCancel) return
+
+    setCancelling(true)
+
+    try {
+      const res = await fetch(`/api/booking-requests/${toCancel._id}`, {
+        method: "DELETE",
+      })
+
+      const result = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        throw new Error(
+          result?.message ?? `Cancel failed (server error ${res.status}).`
+        )
+      }
+
+      // The booking no longer exists — drop the row instead of restatusing it.
+      setBookings((prev) => prev.filter((b) => b._id !== toCancel._id))
+
+      toast.success("Booking removed", {
+        description: `${toCancel.studio.name || "Studio"} on ${formatDate(
+          toCancel.booking.date
+        )} was removed from your bookings.`,
+      })
+
+      setToCancel(null)
+    } catch (err) {
+      toast.error(
+        err instanceof TypeError
+          ? "Can't reach the server. Please try again."
+          : err instanceof Error
+            ? err.message
+            : "Something went wrong. Please try again."
+      )
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   return (
-    <div className="relative min-h-[100dvh] bg-[#faf8f5] px-4 pb-16 pt-28 text-[#1a1410] dark:bg-[#0e0b09] dark:text-white sm:px-6">
+    <div className="relative min-h-[100dvh] bg-[#faf8f5] px-4 pt-28 pb-16 text-[#1a1410] sm:px-6 dark:bg-[#0e0b09] dark:text-white">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -533,7 +427,7 @@ const MyStudioListingsPage = () => {
 
         {!isPending && !user && (
           <div className={`${cardSurface} mx-auto max-w-md p-8 text-center`}>
-            <h1 className="text-3xl font-extrabold uppercase tracking-tight">
+            <h1 className="text-3xl font-extrabold tracking-tight uppercase">
               Sign in first
             </h1>
             <p className="mt-3 text-sm text-[#3d3228]/70 dark:text-white/60">
@@ -547,7 +441,7 @@ const MyStudioListingsPage = () => {
 
         {!isPending && user && !isOwner && (
           <div className={`${cardSurface} mx-auto max-w-md p-8 text-center`}>
-            <h1 className="text-3xl font-extrabold uppercase tracking-tight">
+            <h1 className="text-3xl font-extrabold tracking-tight uppercase">
               Not your bookings
             </h1>
             <p className="mt-3 text-sm text-[#3d3228]/70 dark:text-white/60">
@@ -567,12 +461,12 @@ const MyStudioListingsPage = () => {
             <div className="mb-9">
               <div className="mb-3 flex items-center gap-3">
                 <span className="h-px w-8 bg-[#8a6a4d] dark:bg-[#C9A98B]" />
-                <span className="text-xs font-semibold uppercase tracking-[0.3em] text-[#8a6a4d] dark:text-[#C9A98B]">
+                <span className="text-xs font-semibold tracking-[0.3em] text-[#8a6a4d] uppercase dark:text-[#C9A98B]">
                   Your reservations
                 </span>
               </div>
 
-              <h1 className="text-3xl font-extrabold uppercase tracking-tight sm:text-5xl">
+              <h1 className="text-3xl font-extrabold tracking-tight uppercase sm:text-5xl">
                 My studio bookings
               </h1>
 
@@ -599,7 +493,7 @@ const MyStudioListingsPage = () => {
 
             {status === "error" && (
               <div className={`${cardSurface} p-10 text-center`}>
-                <h2 className="text-xl font-extrabold uppercase tracking-tight">
+                <h2 className="text-xl font-extrabold tracking-tight uppercase">
                   Couldn&apos;t load your bookings
                 </h2>
                 <p className="mt-2 text-sm text-[#3d3228]/70 dark:text-white/60">
@@ -608,8 +502,8 @@ const MyStudioListingsPage = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setStatus("loading");
-                    load();
+                    setStatus("loading")
+                    load()
                   }}
                   className={`${tanButton} mt-6`}
                 >
@@ -620,13 +514,13 @@ const MyStudioListingsPage = () => {
 
             {status === "ready" && bookings.length === 0 && (
               <div className="rounded-2xl border border-dashed border-[#1a1410]/20 px-6 py-16 text-center dark:border-white/15">
-                <h2 className="text-xl font-extrabold uppercase tracking-tight">
+                <h2 className="text-xl font-extrabold tracking-tight uppercase">
                   No bookings yet
                 </h2>
                 <p className="mt-2 text-sm text-[#3d3228]/70 dark:text-white/60">
                   You haven&apos;t booked any studios yet.
                 </p>
-                <Link href="/studios" className={`${tanButton} mt-6`}>
+                <Link href="/studioes" className={`${tanButton} mt-6`}>
                   Explore Studios
                 </Link>
               </div>
@@ -634,12 +528,13 @@ const MyStudioListingsPage = () => {
 
             {status === "ready" && bookings.length > 0 && (
               <>
+                {/* Desktop table */}
                 <div
-                  className={`${cardSurface} hidden overflow-hidden md:block`}
+                  className={`${cardSurface} hidden overflow-x-auto md:block`}
                 >
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="border-b border-[#1a1410]/10 text-xs uppercase tracking-[0.18em] text-[#3d3228]/60 dark:border-white/10 dark:text-white/50">
+                      <tr className="border-b border-[#1a1410]/10 text-xs tracking-[0.18em] text-[#3d3228]/60 uppercase dark:border-white/10 dark:text-white/50">
                         <th className="px-6 py-4 font-semibold">Studio</th>
                         <th className="px-6 py-4 font-semibold">Location</th>
                         <th className="px-6 py-4 font-semibold">
@@ -647,6 +542,7 @@ const MyStudioListingsPage = () => {
                         </th>
                         <th className="px-6 py-4 font-semibold">Duration</th>
                         <th className="px-6 py-4 font-semibold">Total</th>
+                        <th className="px-6 py-4 font-semibold">Status</th>
                         <th className="px-6 py-4 text-right font-semibold">
                           Actions
                         </th>
@@ -654,162 +550,276 @@ const MyStudioListingsPage = () => {
                     </thead>
 
                     <tbody className="divide-y divide-[#1a1410]/10 dark:divide-white/10">
-                      {bookings.map((item) => (
-                        <tr key={item._id} className="align-middle">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-4">
-                              <StudioThumb
-                                image={getImage(item.studio.image)}
-                                title={item.studio.name || "Studio"}
-                                className="h-14 w-20 rounded-lg"
-                              />
-                              <div className="min-w-0">
-                                <p className="line-clamp-1 font-extrabold tracking-tight">
-                                  {item.studio.name || "Studio Booking"}
-                                </p>
-                                <span className="mt-1 inline-block rounded-full bg-[#C9A98B]/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#8a6a4d] dark:text-[#C9A98B]">
-                                  {categoryLabel(item.studio.category)}
-                                </span>
+                      {bookings.map((item) => {
+                        const displayStatus = getDisplayStatus(item)
+
+                        return (
+                          <tr key={item._id} className="align-middle">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-4">
+                                <StudioThumb
+                                  image={getImage(item.studio.image)}
+                                  title={item.studio.name || "Studio"}
+                                  className="h-14 w-20 rounded-lg"
+                                />
+                                <div className="min-w-0">
+                                  <p className="line-clamp-1 font-extrabold tracking-tight">
+                                    {item.studio.name || "Studio Booking"}
+                                  </p>
+                                  <span className="mt-1 inline-block rounded-full bg-[#C9A98B]/20 px-2.5 py-0.5 text-[11px] font-bold tracking-[0.12em] text-[#8a6a4d] uppercase dark:text-[#C9A98B]">
+                                    {categoryLabel(item.studio.category)}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          <td className="px-6 py-4 text-[#3d3228]/80 dark:text-white/65">
-                            <span className="line-clamp-2">
-                              {item.studio.location || "Not available"}
-                            </span>
-                          </td>
+                            <td className="px-6 py-4 text-[#3d3228]/80 dark:text-white/65">
+                              <span className="line-clamp-2">
+                                {item.studio.location || "Not available"}
+                              </span>
+                            </td>
 
-                          <td className="whitespace-nowrap px-6 py-4">
-                            <p className="font-bold">
-                              {formatDate(item.booking.date)}
-                            </p>
-                            <p className="text-[#3d3228]/60 dark:text-white/50">
-                              {formatTime(item.booking.startTime)}
-                            </p>
-                          </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <p className="font-bold">
+                                {formatDate(item.booking.date)}
+                              </p>
+                              <p className="text-[#3d3228]/60 dark:text-white/50">
+                                {formatTime(item.booking.startTime)}
+                              </p>
+                            </td>
 
-                          <td className="whitespace-nowrap px-6 py-4 text-[#3d3228]/80 dark:text-white/65">
-                            {item.booking.duration}{" "}
-                            {item.booking.duration === 1 ? "hour" : "hours"}
-                          </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-[#3d3228]/80 dark:text-white/65">
+                              {item.booking.duration}{" "}
+                              {item.booking.duration === 1 ? "hour" : "hours"}
+                            </td>
 
-                          <td className="whitespace-nowrap px-6 py-4">
-                            <p className="font-extrabold">
-                              ${item.booking.totalPrice}
-                            </p>
-                            <p className="text-xs text-[#3d3228]/60 dark:text-white/50">
-                              ${item.studio.hourlyRate ?? "N/A"} / hr
-                            </p>
-                          </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <p className="font-extrabold">
+                                ${item.booking.totalPrice}
+                              </p>
+                              <p className="text-xs text-[#3d3228]/60 dark:text-white/50">
+                                ${item.studio.hourlyRate ?? "N/A"} / hr
+                              </p>
+                            </td>
 
-                          <td className="px-6 py-4">
-                            <div className="flex justify-end gap-3">
-                              <button
-                                type="button"
-                                onClick={() => setToEdit(item)}
-                                className={updateButton}
-                              >
-                                <Pencil size={13} aria-hidden="true" />
-                                Update
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setToDelete(item)}
-                                className={deleteButton}
-                              >
-                                <Trash2 size={13} aria-hidden="true" />
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            <td className="px-6 py-4">
+                              <StatusBadge status={displayStatus} />
+                            </td>
+
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap justify-end gap-3">
+                                {displayStatus === "Pending" && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => setToCancel(item)}
+                                      disabled={
+                                        updatingId !== null || cancelling
+                                      }
+                                      className={cancelButton}
+                                    >
+                                      <Ban size={13} aria-hidden="true" />
+                                      Cancel Booking
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateStatus(item, "Confirmed")
+                                      }}
+                                      disabled={
+                                        updatingId !== null || cancelling
+                                      }
+                                      className={confirmButton}
+                                    >
+                                      {updatingId === item._id &&
+                                      updatingKind === "confirm" ? (
+                                        <Loader2
+                                          size={13}
+                                          className="animate-spin"
+                                          aria-hidden="true"
+                                        />
+                                      ) : (
+                                        <Check size={13} aria-hidden="true" />
+                                      )}
+                                      Confirm
+                                    </button>
+                                  </>
+                                )}
+
+                                {displayStatus === "Confirmed" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateStatus(item, "Completed")
+                                    }}
+                                    disabled={updatingId !== null || cancelling}
+                                    className={confirmButton}
+                                  >
+                                    {updatingId === item._id &&
+                                    updatingKind === "complete" ? (
+                                      <Loader2
+                                        size={13}
+                                        className="animate-spin"
+                                        aria-hidden="true"
+                                      />
+                                    ) : (
+                                      <CheckCheck
+                                        size={13}
+                                        aria-hidden="true"
+                                      />
+                                    )}
+                                    Complete
+                                  </button>
+                                )}
+
+                                {(displayStatus === "Completed" ||
+                                  displayStatus === "Cancelled") && (
+                                  <p className="text-right text-xs text-[#3d3228]/40 dark:text-white/30">
+                                    —
+                                  </p>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
 
+                {/* Mobile cards */}
                 <div className="grid gap-5 md:hidden">
-                  {bookings.map((item) => (
-                    <article
-                      key={item._id}
-                      className={`${cardSurface} overflow-hidden`}
-                    >
-                      <StudioThumb
-                        image={getImage(item.studio.image)}
-                        title={item.studio.name || "Studio"}
-                        className="aspect-[16/9] w-full"
-                      />
+                  {bookings.map((item) => {
+                    const displayStatus = getDisplayStatus(item)
 
-                      <div className="p-5">
-                        <span className="inline-block rounded-full bg-[#C9A98B]/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[#8a6a4d] dark:text-[#C9A98B]">
-                          {categoryLabel(item.studio.category)}
-                        </span>
+                    return (
+                      <article
+                        key={item._id}
+                        className={`${cardSurface} overflow-hidden`}
+                      >
+                        <StudioThumb
+                          image={getImage(item.studio.image)}
+                          title={item.studio.name || "Studio"}
+                          className="aspect-[16/9] w-full"
+                        />
 
-                        <h2 className="mt-2 text-lg font-extrabold tracking-tight">
-                          {item.studio.name || "Studio Booking"}
-                        </h2>
+                        <div className="p-5">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="inline-block rounded-full bg-[#C9A98B]/20 px-2.5 py-0.5 text-[11px] font-bold tracking-[0.12em] text-[#8a6a4d] uppercase dark:text-[#C9A98B]">
+                              {categoryLabel(item.studio.category)}
+                            </span>
+                            <StatusBadge status={displayStatus} />
+                          </div>
 
-                        <p className="mt-2 flex items-start gap-1.5 text-sm text-[#3d3228]/70 dark:text-white/60">
-                          <MapPin
-                            size={15}
-                            className="mt-0.5 shrink-0 text-[#8a6a4d] dark:text-[#C9A98B]"
-                            aria-hidden="true"
-                          />
-                          {item.studio.location || "Not available"}
-                        </p>
+                          <h2 className="mt-2 text-lg font-extrabold tracking-tight">
+                            {item.studio.name || "Studio Booking"}
+                          </h2>
 
-                        <div className="mt-3 space-y-1.5 text-sm text-[#3d3228]/70 dark:text-white/60">
-                          <p className="flex items-center gap-1.5">
-                            <CalendarDays
+                          <p className="mt-2 flex items-start gap-1.5 text-sm text-[#3d3228]/70 dark:text-white/60">
+                            <MapPin
                               size={15}
-                              className="text-[#8a6a4d] dark:text-[#C9A98B]"
+                              className="mt-0.5 shrink-0 text-[#8a6a4d] dark:text-[#C9A98B]"
                               aria-hidden="true"
                             />
-                            {formatDate(item.booking.date)}
+                            <span className="min-w-0 break-words">
+                              {item.studio.location || "Not available"}
+                            </span>
                           </p>
-                          <p className="flex items-center gap-1.5">
-                            <Clock
-                              size={15}
-                              className="text-[#8a6a4d] dark:text-[#C9A98B]"
-                              aria-hidden="true"
-                            />
-                            {formatTime(item.booking.startTime)} ·{" "}
-                            {item.booking.duration}{" "}
-                            {item.booking.duration === 1 ? "hour" : "hours"}
-                          </p>
-                        </div>
 
-                        <div className="mt-4 flex items-center justify-between border-t border-[#1a1410]/10 pt-4 dark:border-white/10">
-                          <p className="text-sm text-[#3d3228]/60 dark:text-white/50">
-                            ${item.studio.hourlyRate ?? "N/A"} / hr
-                          </p>
-                          <p className="text-xl font-black tracking-tight">
-                            ${item.booking.totalPrice}
-                          </p>
-                        </div>
+                          <div className="mt-3 space-y-1.5 text-sm text-[#3d3228]/70 dark:text-white/60">
+                            <p className="flex items-center gap-1.5">
+                              <CalendarDays
+                                size={15}
+                                className="text-[#8a6a4d] dark:text-[#C9A98B]"
+                                aria-hidden="true"
+                              />
+                              {formatDate(item.booking.date)}
+                            </p>
+                            <p className="flex items-center gap-1.5">
+                              <Clock
+                                size={15}
+                                className="text-[#8a6a4d] dark:text-[#C9A98B]"
+                                aria-hidden="true"
+                              />
+                              {formatTime(item.booking.startTime)} ·{" "}
+                              {item.booking.duration}{" "}
+                              {item.booking.duration === 1 ? "hour" : "hours"}
+                            </p>
+                          </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setToEdit(item)}
-                            className={`${updateButton} !h-10`}
-                          >
-                            <Pencil size={13} aria-hidden="true" />
-                            Update
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setToDelete(item)}
-                            className={`${deleteButton} !h-10`}
-                          >
-                            <Trash2 size={13} aria-hidden="true" />
-                            Delete
-                          </button>
+                          <div className="mt-4 flex items-center justify-between border-t border-[#1a1410]/10 pt-4 dark:border-white/10">
+                            <p className="text-sm text-[#3d3228]/60 dark:text-white/50">
+                              ${item.studio.hourlyRate ?? "N/A"} / hr
+                            </p>
+                            <p className="text-xl font-black tracking-tight">
+                              ${item.booking.totalPrice}
+                            </p>
+                          </div>
+
+                          {displayStatus === "Pending" && (
+                            <div className="mt-4 flex flex-col gap-3">
+                              <button
+                                type="button"
+                                onClick={() => setToCancel(item)}
+                                disabled={updatingId !== null || cancelling}
+                                className={`${cancelButton} !h-10 w-full`}
+                              >
+                                <Ban size={13} aria-hidden="true" />
+                                Cancel Booking
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateStatus(item, "Confirmed")
+                                }}
+                                disabled={updatingId !== null || cancelling}
+                                className={`${confirmButton} !h-10 w-full`}
+                              >
+                                {updatingId === item._id &&
+                                updatingKind === "confirm" ? (
+                                  <Loader2
+                                    size={14}
+                                    className="animate-spin"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <Check size={14} aria-hidden="true" />
+                                )}
+                                Confirm
+                              </button>
+                            </div>
+                          )}
+
+                          {displayStatus === "Confirmed" && (
+                            <div className="mt-4">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateStatus(item, "Completed")
+                                }}
+                                disabled={updatingId !== null || cancelling}
+                                className={`${confirmButton} !h-10 w-full`}
+                              >
+                                {updatingId === item._id &&
+                                updatingKind === "complete" ? (
+                                  <Loader2
+                                    size={14}
+                                    className="animate-spin"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <CheckCheck size={14} aria-hidden="true" />
+                                )}
+                                Complete
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </article>
-                  ))}
+                      </article>
+                    )
+                  })}
                 </div>
               </>
             )}
@@ -817,25 +827,16 @@ const MyStudioListingsPage = () => {
         )}
       </div>
 
-      {toEdit && (
-        <EditModal
-          booking={toEdit}
-          saving={saving}
-          onCancel={() => setToEdit(null)}
-          onSave={handleUpdate}
-        />
-      )}
-
-      {toDelete && (
-        <DeleteModal
-          booking={toDelete}
-          deleting={deleting}
-          onCancel={() => setToDelete(null)}
-          onConfirm={handleDelete}
+      {toCancel && (
+        <CancelModal
+          booking={toCancel}
+          cancelling={cancelling}
+          onClose={() => setToCancel(null)}
+          onConfirm={handleCancel}
         />
       )}
     </div>
-  );
-};
+  )
+}
 
-export default MyStudioListingsPage;
+export default MyStudioListingsPage
